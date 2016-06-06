@@ -45,3 +45,16 @@ what gets written to files
 4. `runCase4()` this is a straight up copy-and-paste of the opencascade sample code. I
    have not compiled or run this code yet, just including it because it helps to look at
    their 'clean' vanilla example sometimes, without all my extra commentary.
+
+# python parsers
+`DumpDataViewer.py` is intended to be used on a txt file that contains the full output of
+`BRepTools::Dump`. It will pull out the Face data near the bottom. If more than one txt
+file is provided, it would format the output so that you can compare the data
+side-by-side.
+
+`ShapeDataFormatter.py` is intended to be used with a txt files that contains the output
+of the `printShapeInfos` command. This `printShapeInfos` takes three `TopoDS_Shape`s, uses
+`TopExp_MapShapes` to traverse the `TopoDS_FACE`s in the `Shape`, and writes out the
+geometric location and the direction of the perpendicular vector to the Face. This gives
+enough information to uniquely identify each Face. The python script takes this output and
+formats it so that they are side-by-side, for easier comparison.
