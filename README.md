@@ -28,11 +28,11 @@ The `main` function is super simple, and essentially calls one or more of some d
 'run case's that I have defined. Here is a brief description of each:
 
 1. `runCase1()`
-  1. 10 x 20 x 30 cube is created (not extruded).
-  2. A 5 x 5 x 5 cube is created with it's Top Face co-planar with the Top Face of the
+  a. 10 x 20 x 30 cube is created (not extruded).
+  b. A 5 x 5 x 5 cube is created with it's Top Face co-planar with the Top Face of the
 first cube. It is roughly centered on the top face
-  3. The smaller cube is `Cut` from the larger one
-  4. Three `txt` files are written containing `Dump` data for the large box, the small
+  c. The smaller cube is `Cut` from the larger one
+  d. Three `txt` files are written containing `Dump` data for the large box, the small
 one, and the result box of the `Cut` operation
 2. `runCase2()` same as #1 except the first box is extruded from a 2D square.
 **Note** For both `runCase1` and `runCase2` you can edit the bottom of
