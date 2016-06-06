@@ -1,0 +1,30 @@
+[ 50%] Linking CXX executable bin/occTest
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o: In function `runCase3()':
+/home/wolfie/Program/pyFreeCad/src/occPyTest.cpp:257: undefined reference to `TNaming_Builder::TNaming_Builder(TDF_Label const&)'
+/home/wolfie/Program/pyFreeCad/src/occPyTest.cpp:262: undefined reference to `TNaming_Builder::Generated(TopoDS_Shape const&)'
+/home/wolfie/Program/pyFreeCad/src/occPyTest.cpp:266: undefined reference to `TNaming_Builder::TNaming_Builder(TDF_Label const&)'
+/home/wolfie/Program/pyFreeCad/src/occPyTest.cpp:269: undefined reference to `TNaming_Builder::Generated(TopoDS_Shape const&)'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o: In function `TNaming_NamedShape::~TNaming_NamedShape()':
+/usr/local/include/opencascade/TNaming_NamedShape.hxx:85: undefined reference to `TNaming_NamedShape::Clear()'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o: In function `TNaming_NamedShape::ID() const':
+/usr/local/include/opencascade/TNaming_NamedShape.lxx:23: undefined reference to `TNaming_NamedShape::GetID()'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0x28): undefined reference to `TNaming_NamedShape::DynamicType() const'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0x40): undefined reference to `TNaming_NamedShape::BeforeRemoval()'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0x60): undefined reference to `TNaming_NamedShape::BeforeUndo(opencascade::handle<TDF_AttributeDelta> const&, unsigned int)'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0x68): undefined reference to `TNaming_NamedShape::AfterUndo(opencascade::handle<TDF_AttributeDelta> const&, unsigned int)'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0x78): undefined reference to `TNaming_NamedShape::BackupCopy() const'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0x80): undefined reference to `TNaming_NamedShape::Restore(opencascade::handle<TDF_Attribute> const&)'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0xa0): undefined reference to `TNaming_NamedShape::DeltaOnModification(opencascade::handle<TDF_Attribute> const&) const'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0xa8): undefined reference to `TNaming_NamedShape::DeltaOnModification(opencascade::handle<TDF_DeltaOnModification> const&)'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0xb0): undefined reference to `TNaming_NamedShape::DeltaOnRemoval() const'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0xb8): undefined reference to `TNaming_NamedShape::NewEmpty() const'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0xc0): undefined reference to `TNaming_NamedShape::Paste(opencascade::handle<TDF_Attribute> const&, opencascade::handle<TDF_RelocationTable> const&) const'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0xc8): undefined reference to `TNaming_NamedShape::References(opencascade::handle<TDF_DataSet> const&) const'
+CMakeFiles/occTest.dir/src/occPyTest.cpp.o:(.rodata._ZTV18TNaming_NamedShape[_ZTV18TNaming_NamedShape]+0xd0): undefined reference to `TNaming_NamedShape::Dump(std::ostream&) const'
+collect2: error: ld returned 1 exit status
+CMakeFiles/occTest.dir/build.make:94: recipe for target 'bin/occTest' failed
+make[2]: *** [bin/occTest] Error 1
+CMakeFiles/Makefile2:67: recipe for target 'CMakeFiles/occTest.dir/all' failed
+make[1]: *** [CMakeFiles/occTest.dir/all] Error 2
+Makefile:83: recipe for target 'all' failed
+make: *** [all] Error 2

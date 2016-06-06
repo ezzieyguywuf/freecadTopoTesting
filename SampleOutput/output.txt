@@ -1,0 +1,27 @@
+Hello, Wolfgang
+orig box
+For i= 1 loc = (0, 0, 0) , dir = (1, 0, -0) 
+For i= 2 loc = (10, 0, 0) , dir = (1, 0, -0) 
+For i= 3 loc = (0, 0, 0) , dir = (-0, 1, 0) 
+For i= 4 loc = (0, 20, 0) , dir = (-0, 1, 0) 
+For i= 5 loc = (0, 0, 0) , dir = (0, 0, 1) 
+For i= 6 loc = (0, 0, 30) , dir = (0, 0, 1) 
+cut box
+For i= 1 loc = (7, 5, 30) , dir = (-1, 0, -0) 
+For i= 2 loc = (2, 5, 30) , dir = (-1, 0, -0) 
+For i= 3 loc = (7, 5, 30) , dir = (0, 1, 0) 
+For i= 4 loc = (7, 10, 30) , dir = (0, 1, 0) 
+For i= 5 loc = (7, 5, 30) , dir = (0, 0, -1) 
+For i= 6 loc = (7, 5, 25) , dir = (0, 0, -1) 
+new box
+For i= 1 loc = (0, 0, 0) , dir = (1, 0, -0) 
+For i= 2 loc = (0, 0, 0) , dir = (-0, 1, 0) 
+For i= 3 loc = (0, 0, 30) , dir = (0, 0, 1) 
+For i= 4 loc = (0, 20, 0) , dir = (-0, 1, 0) 
+For i= 5 loc = (0, 0, 0) , dir = (0, 0, 1) 
+For i= 6 loc = (10, 0, 0) , dir = (1, 0, -0) 
+For i= 7 loc = (2, 5, 30) , dir = (-1, 0, -0) 
+For i= 8 loc = (7, 5, 30) , dir = (0, 1, 0) 
+For i= 9 loc = (7, 5, 30) , dir = (-1, 0, -0) 
+For i= 10 loc = (7, 10, 30) , dir = (0, 1, 0) 
+For i= 11 loc = (7, 5, 25) , dir = (0, 0, -1) 
