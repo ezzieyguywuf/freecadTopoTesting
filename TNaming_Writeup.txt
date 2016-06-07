@@ -32,4 +32,101 @@ So what is an TDF_Attribute? Like I said earlier, it is the actual 'meat' of the
 Framework. The Tag is just an Address to a TDF_Label, which is just a construct that holds
 attributes. The TDF_Attribute is a class that contains whatever information it is that you
 care about. TNaming_NamedShape is a TDF_Attribute that is described in the TNaming
-Package.
+Package. Make sense? Lol, there appear to be many other TNaming_Attribute's that occ has
+defined, I guess expecting that they are common things that people will want to store. For
+a full list, check
+[here](http://www.opencascade.com/doc/occt-6.9.1/refman/html/class_t_d_f___attribute.html).
+
+One more thing and TDF_Attribute's. A TDF_Label can only contain **one** of a given
+TDF_Attribute. I don't really know why, I just know it's true. For this reason, every
+TDF_Label that occ has defined has it's own unique GUID, which can be accessed via the
+_class method_ `GetID()`. What I mean by 'class method' is that you do **_not_** do the
+following:
+
+    TNaming_NamedShape myNamedShape();
+    Standard_GUID myGUID = myNamedShape.GetID() // WRONG! Don't do this!
+
+Instead, what you want to do is simply
+
+    Standard_GUID myGUID = TNaming_NamedShape::GetID() // Proper way to access class method
+
+This GUID thing is important b/c it is the mechanism by which you grab a desired
+TDF_Attribute from a TDF_Label. Consider it the equivalent of a Tag - it is the address by
+which we access a TDF_Attribute in a TDF_Label.
+
+Typical usage of TDF_Label, as well as retrieving an Attribute from a label:
+
+    TDF_Label myLabel = fatherLabel.FindChild(1); // created label '1' if it didn't exist
+    TDF_Label testLabel = fatherLabel.FindChild(1); // retrieved label '1'
+
+    // I haven't used this yet, but it seems to keep track of unique label numbers for you
+    TDF_Label otherLabel = TDF_TagSource::NewChild(fatherLabel); // probably '2'
+
+    Handle(TNaming_NamedShape)  myNamedShape;
+    // this stores in myNamedShape a pointer to the TNaming_NamedSHape in someLabel
+    someLabel.FindAttribute(TNaming_NamedShape::GetID(), myNamedShape);
+
+## TNaming_NamedShape
+
+So, now that we know what a Tag, a TDF_Label, and a TDF_Attribute are, let's talk about
+TNaming_NamedShape. TNaming_NamedShape inherits from TDF_Attribute: in other words, it is
+a TDF_Attribute. It is actually a 'helper TDF_Attribute', if you will, that writes and
+reads information from TNaming_UsedShapes. I don't know a ton about TNaming_UsedShapes
+right now, but suffice to say that it:
+
+1. Is a TDF_Attribute
+2. Only exists on the root node of the the TDF_Data tree structure
+3. Is created for you whenever you add a TNaming_NamedShape to your TDF_Data tree
+4. Should never really need to be accessed directly (I think)
+5. Most importantly, it is the grand-daddy of the whole Topological Naming algorithm and
+mechanism that occ has implemented. It stores a list of all the TopoDS_Shape's that are
+used in the evolution of the Shape.
+
+The only method of the TNaming_NamedShape class I've found myself using is
+`myNamedShape.Get()`, or more often `myNamedShape->Get()` as I'm typically dealing with a
+pointer (or `Handle` in occ terms) to the TNaming_NamedShape. This method returns the 
+TopoDS_Shape which is stored inside the TNaming_NamedShape (or rather, the TopoDS_Shape
+that the TNaming_NamedShape points to in the TNaming_UsedShapes attribute, if you want to
+be technical).
+
+You may be wondering "if the TNaming_NamedShape attribute is so important, how come we're
+only using the Get method? How do we add information to the TNaming_NamedShape attribute?"
+Good question! This is actually done using the TNaming_Builder class. As the name implies,
+the TNaming_Builder class helps us to 'build' TNaming_NamedShape attributes. Again, I
+won't deign to speak for the intent of the occ devs, but I imagine the reason for the
+separate TNaming_Builder is to separate the entries into the TNaming_UsedShape structure
+from the creation of those entries. For example, if you look at the [occ
+documentation](http://www.opencascade.com/doc/occt-7.0.0/overview/html/occt_user_guides__ocaf.html#occt_ocaf_5_3),
+you'll notice that TNaming_NamedShape tracks the "evolution" of it's TopoDS_Shape in 5
+different ways. TNaming_Builder makes it easier for us to insert these different
+evolutions into the TNaming_NamedShape attribute, because there's some funky
+behind-the-scenes stuff going on with some sort of TNaming_Node construct.
+
+Things to know about TNaming_Builder:
+
+1. Always use a TNaming_Builder to add TopoDS_Shape evolution information to a
+TNaming_NamedShape
+2. TNaming_Builder takes as an argument to its constructor the TDF_Label on which to
+create the TNaming_NamedShape attribute.
+  a. If no TNaming_UsedShapes exists in the root of the TDF_Data tree, it creates it
+  b. If no TNaming_NamedShape exists at this TDF_Label, it creates one
+  c. If a TNaming_NamedShape already exists at this TDF_Label, it creates some sort of
+  backup, then clears all the data so that it can write the new data. I'm not certain, but
+  I think this backup mechanism may be used by the TNaming_UsedShape thing and by the
+  Topological Naming algorithm to figure things out.
+3. Only use one TNaming_Builder per evolution type. In fact, I think it's safest to just
+create a new TNaming_Builder any time you're dealing with a new operation.
+
+Here's a typical use-case:
+
+    TNaming_Builder myBuilder(myLabel);
+    myBuilder.Generated( anEdge, aFace); // aFace was generated from anEdge
+
+    TNaming_Builder myBuilder2(myLabel2);
+    myBuilder2.Modify( origShape, newShape ); // origShape was somehowe modified (cut, fuse, etc...) into newShape
+
+    TNaming_Builder myBuilder3(myLabel3);
+    myBuilder3.Select( anEdge, aFace); // anEdge is an edge within the contex of aFace.
+                                       // The occ example actually provides a TopoDS_Shape
+                                       // as the context, rather than the more specific
+                                       // TopoDS_Face. 
