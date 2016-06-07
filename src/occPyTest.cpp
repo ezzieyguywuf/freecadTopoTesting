@@ -1051,20 +1051,35 @@ void runCase4(){
     printShapeInfo(filletedBox->Get(), TopAbs_EDGE);
 
     TDF_ChildIterator selectedEdges(SelectedEdgesLabel);
-    for(; selectedEdges.More(); selectedEdges.Next()){
+    BRepFilletAPI_MakeFillet modFillet(origBox->Get());
+
+    // Let's try to change the Fillet radius an a single one of the edges from 5 to 2
+    i=0;
+    for(; selectedEdges.More(); selectedEdges.Next(), i++){
+        Standard_Real radius = 5.;
+        if (i == 2){
+            std::cout << "Changing radius from 5 to 2 for following edge:" << std::endl;
+            radius = 2.;
+        }
         TDF_Label anEdgeLabel = selectedEdges.Value();
         Handle(TNaming_NamedShape) anEdgeNamedShape; 
         anEdgeLabel.FindAttribute(TNaming_NamedShape::GetID(), anEdgeNamedShape);
         std::cout << "Printing attributes for a 'selected' edge" << std::endl;
         printShapeInfo(anEdgeNamedShape->Get(), TopAbs_EDGE);
+        modFillet.Add(radius, TopoDS::Edge(anEdgeNamedShape->Get()));
     }
 
-    // Let's try to change the Fillet radius an a single one of the edges from 5 to 2
-    TDF_Label anEdgeLabel = SelectedEdgesLabel.FindChild(1);
-    Handle(TNaming_NamedShape) anEdgeNamedShape; 
-    anEdgeLabel.FindAttribute(TNaming_NamedShape::GetID(), anEdgeNamedShape);
-    TopoDS_Edge edgeToMod = TopoDS::Edge(anEdgeNamedShape->Get());
-    // TBD... this fillet stufff is a work in progress, it's not complete yet
+    // TODO: need to update the Data Framework since we've changed things. New node?
+    modFillet.Build();
+    TopoDS_Shape newFilletedBox = modFillet.Shape();
+    std::cout << "These are the Faces of the new Filleted box" << std::endl;
+    printShapeInfo(newFilletedBox);
+    std::cout << "These are the edges of the new Filleted box" << std::endl;
+    printShapeInfo(newFilletedBox, TopAbs_EDGE);
+
+    // output: it appears to work. The box doesn't have the hole in it though. I guess I have to rebuild the whole
+    // solid? That makes sense, actually. And I think FreeCAD already takes care of rebuilding stuff, right? We'll just
+    // have to get FreeCAD to use these Labels instead of the Indexes that it's using now.
 
 }
 
