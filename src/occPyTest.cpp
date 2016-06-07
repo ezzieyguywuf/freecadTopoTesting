@@ -14,6 +14,7 @@
 #include <TNaming.hxx>
 
 #include <Geom_Plane.hxx>
+#include <Geom_Line.hxx>
 #include <Geom_TrimmedCurve.hxx>
 
 #include <GC_MakeSegment.hxx>
@@ -57,7 +58,7 @@
 
 void printShapeInfos(TopoDS_Shape shape1, TopoDS_Shape shape2, TopoDS_Shape shape3);
 void writeShapeInfos(TopoDS_Shape shape1, TopoDS_Shape shape2, TopoDS_Shape shape3);
-void printShapeInfo(TopoDS_Shape shape);
+void printShapeInfo(TopoDS_Shape shape, TopAbs_ShapeEnum which=TopAbs_FACE);
 void writeShapeInfo(TopoDS_Shape shape, std::ofstream&);
 void printDumpFile(TopoDS_Shape shape);
 void writeDumpFiles(TopoDS_Shape orig, TopoDS_Shape cut, TopoDS_Shape newBox);
@@ -85,27 +86,48 @@ void writeShapeInfos(TopoDS_Shape shape1, TopoDS_Shape shape2, TopoDS_Shape shap
     myOutFile.close();
 }
 
-void printShapeInfo(TopoDS_Shape shape){
+void printShapeInfo(TopoDS_Shape shape, TopAbs_ShapeEnum which){
     TopTools_IndexedMapOfShape mapOfShapes;
-    TopExp::MapShapes(shape, TopAbs_FACE, mapOfShapes);
-    for (int i = 1; i <= mapOfShapes.Extent(); i++){
-        TopoDS_Face aFace = TopoDS::Face(mapOfShapes.FindKey(i));
-        Handle(Geom_Surface) aSurface = BRep_Tool::Surface(aFace);
-        if (aSurface->DynamicType() == STANDARD_TYPE(Geom_Plane)){
-            Handle(Geom_Plane) aPlane = Handle(Geom_Plane)::DownCast(aSurface);
-            gp_Pnt aPoint = aPlane->Location();
-            gp_Ax1 anAxis = aPlane->Axis();
-            gp_Dir aDir   = anAxis.Direction();
-            Standard_Real locx, locy, locz, dirx, diry, dirz;
-            locx = aPoint.X();
-            locy = aPoint.Y();
-            locz = aPoint.Z();
-            dirx = aDir.X();
-            diry = aDir.Y();
-            dirz = aDir.Z();
-            std::cout << "For i= " << i << " ";
-            std::cout << "loc = (" << locx << ", " << locy << ", " << locz << ") , ";
-            std::cout << "dir = (" << dirx << ", " << diry << ", " << dirz << ") " << std::endl;
+    TopExp::MapShapes(shape, which, mapOfShapes);
+    if (which == TopAbs_FACE){
+        for (int i = 1; i <= mapOfShapes.Extent(); i++){
+            TopoDS_Face aFace = TopoDS::Face(mapOfShapes.FindKey(i));
+            Handle(Geom_Surface) aSurface = BRep_Tool::Surface(aFace);
+            if (aSurface->DynamicType() == STANDARD_TYPE(Geom_Plane)){
+                Handle(Geom_Plane) aPlane = Handle(Geom_Plane)::DownCast(aSurface);
+                gp_Pnt aPoint = aPlane->Location();
+                gp_Ax1 anAxis = aPlane->Axis();
+                gp_Dir aDir   = anAxis.Direction();
+                Standard_Real locx, locy, locz, dirx, diry, dirz;
+                locx = aPoint.X();
+                locy = aPoint.Y();
+                locz = aPoint.Z();
+                dirx = aDir.X();
+                diry = aDir.Y();
+                dirz = aDir.Z();
+                std::cout << "For i= " << i << " ";
+                std::cout << "loc = (" << locx << ", " << locy << ", " << locz << ") , ";
+                std::cout << "dir = (" << dirx << ", " << diry << ", " << dirz << ") " << std::endl;
+            }
+        }
+    }
+    else if(which == TopAbs_EDGE){
+        for (int i = 1; i <= mapOfShapes.Extent(); i++){
+            Standard_Real lineStart, lineEnd;
+            TopoDS_Edge anEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
+            Handle(Geom_Curve) aCurve = BRep_Tool::Curve(anEdge, lineStart, lineEnd);
+            if (aCurve->DynamicType() == STANDARD_TYPE(Geom_Line)){
+                Handle(Geom_Line) aLine = Handle(Geom_Line)::DownCast(aCurve);
+                gp_Pnt point1, point2;
+                aLine->D0(lineStart, point1);
+                aLine->D0(lineEnd, point2);
+                gp_Ax1 anAxis = aLine->Position();
+                gp_Dir aDir   = anAxis.Direction();
+                std::cout << "For i= " << i << " ";
+                std::cout << "point1 = (" << point1.X() << ", " << point1.Y() << ", " << point1.Z() << ") , ";
+                std::cout << "point2 = (" << point2.X() << ", " << point2.Y() << ", " << point2.Z() << ") , ";
+                std::cout << "dir = (" << aDir.X() << ", " << aDir.Y() << ", " << aDir.Z() << ") " << std::endl;
+            }
         }
     }
 }
@@ -812,8 +834,6 @@ void runCase4(){
         std::cout << "i = " << i << " FE.IsNull = " << FE.IsNull() << " E.IsNull = " << E.IsNull() << std::endl;
     }
 
-    // TODO Figure out if this is a big deal
-    // Not sure why this Build raises a Standard_Error, but FreeCAD doesn't do it so I'm commenting it out
     MKFILLET.Build();
     if(!MKFILLET.IsDone()){
         std::cout << "fillet failed, bailing out" << std::endl;
@@ -1021,8 +1041,17 @@ void runCase4(){
     // ------- END OF ORIGINAL OPENCASCADE TNAMING EXAMPLE --------
     Handle(TNaming_NamedShape) origBox;
     Box1Label.FindAttribute(TNaming_NamedShape::GetID(), origBox);
-    std::cout << "About to print out recovered box, I think" << std::endl;
-    printShapeInfo(origBox->Get());
+    //std::cout << "About to print out recovered box, I think" << std::endl;
+    //printShapeInfo(origBox->Get());
+    std::cout << "About to print out edges from recovered box, I think" << std::endl;
+    printShapeInfo(origBox->Get(), TopAbs_EDGE);
+
+    Handle(TNaming_NamedShape) filletedBox;
+    FilletLabel.FindAttribute(TNaming_NamedShape::GetID(), filletedBox);
+    //std::cout << "About to print out faces from recovered filleted box" << std::endl;
+    //printShapeInfo(filletedBox->Get());
+    std::cout << "About to print out edges from recovered filleted box, I think" << std::endl;
+    printShapeInfo(filletedBox->Get(), TopAbs_EDGE);
 }
 
 int main(){
