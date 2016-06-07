@@ -1059,11 +1059,12 @@ void runCase4(){
         printShapeInfo(anEdgeNamedShape->Get(), TopAbs_EDGE);
     }
 
-    // Let's try changed the Fillet radius an a single one of the edges from 5 to 2
+    // Let's try to change the Fillet radius an a single one of the edges from 5 to 2
     TDF_Label anEdgeLabel = SelectedEdgesLabel.FindChild(1);
     Handle(TNaming_NamedShape) anEdgeNamedShape; 
     anEdgeLabel.FindAttribute(TNaming_NamedShape::GetID(), anEdgeNamedShape);
     TopoDS_Edge edgeToMod = TopoDS::Edge(anEdgeNamedShape->Get());
+    // TBD... this fillet stufff is a work in progress, it's not complete yet
 
 }
 
