@@ -28,6 +28,7 @@
 #include <TopTools_ListOfShape.hxx>
 #include <TopTools_ListIteratorOfListOfShape.hxx>
 #include <TopTools_MapOfShape.hxx>
+#include <TopTools_MapIteratorOfMapOfShape.hxx>
 #include <TopExp.hxx>
 #include <TopExp_Explorer.hxx>
 
@@ -784,10 +785,15 @@ void runCase4(){
 
     BRepFilletAPI_MakeFillet MKFILLET(box1);// fillet's algo
     TDF_Label SelectedEdgesLabel = aLabel.FindChild(SelectedEdgesPOS); //Label for selected edges
-    TopExp_Explorer exp(top1face, TopAbs_EDGE);
+    TopTools_IndexedMapOfShape mapOfEdges;
+    TopExp::MapShapes(top1face, TopAbs_EDGE, mapOfEdges);
+    TopTools_MapIteratorOfMapOfShape edgeIterator;
+    edgeIterator.Initialize(mapOfEdges);
+    //TopExp_Explorer exp(top1face, TopAbs_EDGE);
     Standard_Integer i=1;
-    for(;exp.More();exp.Next(),i++) {
-        const TopoDS_Edge& E = TopoDS::Edge(exp.Current());
+    std::cout << "numEdges = " << mapOfEdges.Extent() << std::endl;
+    for(;edgeIterator.More();edgeIterator.Next(), i++) {
+        const TopoDS_Edge& E = TopoDS::Edge(edgeIterator.Key());
         const TDF_Label& SelEdge  = SelectedEdgesLabel.FindChild(i);
         // Creating TNaming_Selector on label
         TNaming_Selector Selector(SelEdge);
@@ -801,14 +807,18 @@ void runCase4(){
         Selector.Select(E, box1);
         // Recover selected edge from DF, only for example
         const TopoDS_Edge& FE  = TopoDS::Edge(Selector.NamedShape()->Get());
-        MKFILLET.Add(5., FE);
-        std::cout << "i = " << i << std::endl;
+        //MKFILLET.Add(5., 5., FE);
+        MKFILLET.Add(5., 5., E);
+        std::cout << "i = " << i << " FE.IsNull = " << FE.IsNull() << " E.IsNull = " << E.IsNull() << std::endl;
     }
 
     // TODO Figure out if this is a big deal
     // Not sure why this Build raises a Standard_Error, but FreeCAD doesn't do it so I'm commenting it out
-    //MKFILLET.Build();
-    if(!MKFILLET.IsDone()) return; //Algorithm failed
+    MKFILLET.Build();
+    if(!MKFILLET.IsDone()){
+        std::cout << "fillet failed, bailing out" << std::endl;
+        return; //Algorithm failed
+    }
 
     // ...put fillet in the DataFramework as modification of Box1
     TDF_Label FilletLabel       = aLabel.FindChild(FilletPOS);
@@ -1008,6 +1018,11 @@ void runCase4(){
     //
     //Result_1 and Result_2 are the same shapes
     //=========================================
+    // ------- END OF ORIGINAL OPENCASCADE TNAMING EXAMPLE --------
+    Handle(TNaming_NamedShape) origBox;
+    Box1Label.FindAttribute(TNaming_NamedShape::GetID(), origBox);
+    std::cout << "About to print out recovered box, I think" << std::endl;
+    printShapeInfo(origBox->Get());
 }
 
 int main(){
