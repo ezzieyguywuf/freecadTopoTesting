@@ -42,9 +42,9 @@ what gets written to files
    `TNaming`. I've added a lot of commentary, some of it rambling, and I've also renamed
    their variables to things that make more sense to me. This may be a good starting point
    if you need to sort of figure out what this `TNaming` thing is and how it works.
-4. `runCase4()` this is a straight up copy-and-paste of the opencascade sample code. I
-   have not compiled or run this code yet, just including it because it helps to look at
-   their 'clean' vanilla example sometimes, without all my extra commentary.
+4. `runCase4()` this is a straight up copy-and-paste of the opencascade sample code. It
+   should compile and run properly. I've begun to extend it to show some of the geometery
+   as well as prototype how we may use this in FreeCAD
 
 # python parsers
 `DumpDataViewer.py` is intended to be used on a txt file that contains the full output of
