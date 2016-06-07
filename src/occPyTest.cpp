@@ -597,8 +597,20 @@ void runCase3(){
     // anything out of it. This FindAttribute stores the Shape associated with this label in topFaceNamedShape
     myBoxTopLabel.FindAttribute(TNaming_NamedShape::GetID(), topFaceNamedShape);
     const TopoDS_Shape& theTopFace = TNaming_Tool::CurrentShape(topFaceNamedShape);
-    //std::cout << "The shape info for the recovered top face" << std::endl;
-    //printShapeInfo(theTopFace);
+    std::cout << "The shape info for the recovered top face" << std::endl;
+    printShapeInfo(theTopFace);
+
+    // ok, now time to check if theTopFace is the same as the original Top Face of myBox
+    TopTools_IndexedMapOfShape mapOfShapes;
+    TopExp::MapShapes(myBox, TopAbs_FACE, mapOfShapes);
+    int i=0;
+    for (int i = 1; i <= mapOfShapes.Extent(); i++){
+        TopoDS_Face curFace = TopoDS::Face(mapOfShapes.FindKey(i));
+        Standard_Boolean res1 = curFace.IsEqual(theTopFace);
+        Standard_Boolean res2 = curFace.IsSame(theTopFace);
+        std::cout << "For i=" << i <<" IsEqual=" << res1 << " IsSame=" << res2 << " ";
+        printShapeInfo(curFace);
+    }
 
     std::cout << "--------Dump of NamedShape Attribute of newFacesLabel ------" << std::endl;
     Handle(TNaming_NamedShape) newFacesNamedShape;
@@ -606,8 +618,6 @@ void runCase3(){
     newFacesNamedShape->Dump(std::cout);
     std::cout << "--------Dump of newFacesLabel-------" << std::endl;
     newFacesLabel.Dump(std::cout);
-    //std::cout << "--------Deep Dump of aLabel-------" << std::endl;
-    //TDF_Tool::DeepDump(std::cout, aLabel);
 
 }
 
