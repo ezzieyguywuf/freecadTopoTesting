@@ -1052,6 +1052,22 @@ void runCase4(){
     //printShapeInfo(filletedBox->Get());
     std::cout << "About to print out edges from recovered filleted box, I think" << std::endl;
     printShapeInfo(filletedBox->Get(), TopAbs_EDGE);
+
+    TDF_ChildIterator selectedEdges(SelectedEdgesLabel);
+    for(; selectedEdges.More(); selectedEdges.Next()){
+        TDF_Label anEdgeLabel = selectedEdges.Value();
+        Handle(TNaming_NamedShape) anEdgeNamedShape; 
+        anEdgeLabel.FindAttribute(TNaming_NamedShape::GetID(), anEdgeNamedShape);
+        std::cout << "Printing attributes for a 'selected' edge" << std::endl;
+        printShapeInfo(anEdgeNamedShape->Get(), TopAbs_EDGE);
+    }
+
+    // Let's try changed the Fillet radius an a single one of the edges from 5 to 2
+    TDF_Label anEdgeLabel = SelectedEdgesLabel.FindChild(1);
+    Handle(TNaming_NamedShape) anEdgeNamedShape; 
+    anEdgeLabel.FindAttribute(TNaming_NamedShape::GetID(), anEdgeNamedShape);
+    TopoDS_Edge edgeToMod = TopoDS::Edge(anEdgeNamedShape->Get());
+
 }
 
 int main(){
