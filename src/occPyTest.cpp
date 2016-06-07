@@ -1080,6 +1080,17 @@ void runCase4(){
     // output: it appears to work. The box doesn't have the hole in it though. I guess I have to rebuild the whole
     // solid? That makes sense, actually. And I think FreeCAD already takes care of rebuilding stuff, right? We'll just
     // have to get FreeCAD to use these Labels instead of the Indexes that it's using now.
+    Handle(TNaming_NamedShape) recoveredCutBox;
+    Box2Label.FindAttribute(TNaming_NamedShape::GetID(), recoveredCutBox);
+    std::cout << "Here is the recovered Cut Box. Is it in the correct location?" << std::endl;
+    printShapeInfo(recoveredCutBox->Get());
+    // Yup, it's in the correct location!
+    BRepAlgo_Cut mkCut(origBox->Get(), recoveredCutBox->Get());
+    TopoDS_Shape newFilletedBoxWithCut = mkCut.Shape();
+    std::cout << "Here is the final Box with the modified Fillet and the Cut rebuilt" << std::endl;
+    printShapeInfo(newFilletedBoxWithCut);
+    std::cout << "And the edges..." << std::endl;
+    printShapeInfo(newFilletedBoxWithCut, TopAbs_EDGE);
 
 }
 

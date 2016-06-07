@@ -1,0 +1,35 @@
+# What is TNaming?
+
+TNaming is an opencascade (henceforth referred to as occ) 'Package'. It provides a set of
+tools for implementing a Topological Naming structure using the TDF_Data class. What is
+TDF_Data? It is the class used in the TDF 'Package' for storing and manipulating a Data
+Framework (not sure what the T stands for). The occ Documentation does a good job
+explaining the Data Framework and how it works, but here's a few highlights.
+
+## occ Data Framework
+Note: Please refer to the occ Documentation for a more detailed explanation.
+[Here](http://www.opencascade.com/doc/occt-7.0.0/overview/html/occt_user_guides__ocaf.html#occt_ocaf_3)
+is a direct link. It is under the 'OCAF' section of the Documentation, but fear not
+because the Data Framework can be used outside the context of the OCAF thing.
+
+So, the way that occ's TDF package manages Data in it's Data Framework is by creating
+nodes in a tree, all stored in an instance of TDF_Data. Each node has a unique Tag used
+for identifying it in the Data Framework. Each of these Tag's points to a discrete
+TDF_Label in the Data Framework. The TDF_Label, in turn, contains zero or more
+TDF_Attribute's, which themselves contain actual data that you may be interested in.
+
+Why the distinction between Tag and TDF_Label and TDF_Attribute? Well, I can't speak to
+the original intent of the occ devs, but it makes sense to me that you'd want a different
+Tag and TDF_Label. Since the TDF_Label can, itself, contain many TDF_Attribute's that can
+themselves contain a lot of data, it could be quite expensive to store an instance of each
+TDF_Label that you create and care about. In fact, it would be wasteful because your
+TDF_Data instance is already going to have a copy of each TDF_Label, so you'd be doubling
+your memory footprint for no reason. Instead, store a value of the Tag itself, which is
+nothing more than an integer, and then use TDF_Tool::TagList (I think! I haven't tested
+this yet) to retrieve the TDF_Label.
+
+So what is an TDF_Attribute? Like I said earlier, it is the actual 'meat' of the  occ Data
+Framework. The Tag is just an Address to a TDF_Label, which is just a construct that holds
+attributes. The TDF_Attribute is a class that contains whatever information it is that you
+care about. TNaming_NamedShape is a TDF_Attribute that is described in the TNaming
+Package.
