@@ -802,9 +802,12 @@ void runCase4(){
         // Recover selected edge from DF, only for example
         const TopoDS_Edge& FE  = TopoDS::Edge(Selector.NamedShape()->Get());
         MKFILLET.Add(5., FE);
+        std::cout << "i = " << i << std::endl;
     }
 
-    MKFILLET.Build();
+    // TODO Figure out if this is a big deal
+    // Not sure why this Build raises a Standard_Error, but FreeCAD doesn't do it so I'm commenting it out
+    //MKFILLET.Build();
     if(!MKFILLET.IsDone()) return; //Algorithm failed
 
     // ...put fillet in the DataFramework as modification of Box1
@@ -1010,6 +1013,7 @@ void runCase4(){
 int main(){
     //runCase1();
     //runCase2();
-    runCase3();
+    //runCase3();
+    runCase4();
     return 0;
 }
