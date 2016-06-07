@@ -599,6 +599,9 @@ void runCase3(){
     const TopoDS_Shape& theTopFace = TNaming_Tool::CurrentShape(topFaceNamedShape);
     std::cout << "The shape info for the recovered top face" << std::endl;
     printShapeInfo(theTopFace);
+    TopTools_IndexedMapOfShape mapOfEdges;
+    TopExp::MapShapes(theTopFace, TopAbs_EDGE, mapOfEdges);
+    std::cout << "num Edges = " << mapOfEdges.Extent() << std::endl;
 
     // ok, now time to check if theTopFace is the same as the original Top Face of myBox
     TopTools_IndexedMapOfShape mapOfShapes;
@@ -608,7 +611,9 @@ void runCase3(){
         TopoDS_Face curFace = TopoDS::Face(mapOfShapes.FindKey(i));
         Standard_Boolean res1 = curFace.IsEqual(theTopFace);
         Standard_Boolean res2 = curFace.IsSame(theTopFace);
-        std::cout << "For i=" << i <<" IsEqual=" << res1 << " IsSame=" << res2 << " ";
+        TopTools_IndexedMapOfShape mapOfEdges;
+        TopExp::MapShapes(curFace, TopAbs_EDGE, mapOfEdges);
+        std::cout << "For i=" << i <<" IsEqual=" << res1 << " IsSame=" << res2 << " numEdges=" << mapOfEdges.Extent() << " ";
         printShapeInfo(curFace);
     }
 
