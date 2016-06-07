@@ -809,13 +809,10 @@ void runCase4(){
     TDF_Label SelectedEdgesLabel = aLabel.FindChild(SelectedEdgesPOS); //Label for selected edges
     TopTools_IndexedMapOfShape mapOfEdges;
     TopExp::MapShapes(top1face, TopAbs_EDGE, mapOfEdges);
-    TopTools_MapIteratorOfMapOfShape edgeIterator;
-    edgeIterator.Initialize(mapOfEdges);
-    //TopExp_Explorer exp(top1face, TopAbs_EDGE);
     Standard_Integer i=1;
     std::cout << "numEdges = " << mapOfEdges.Extent() << std::endl;
-    for(;edgeIterator.More();edgeIterator.Next(), i++) {
-        const TopoDS_Edge& E = TopoDS::Edge(edgeIterator.Key());
+    for(; i<= mapOfEdges.Extent(); i++){
+        const TopoDS_Edge& E = TopoDS::Edge(mapOfEdges(i));
         const TDF_Label& SelEdge  = SelectedEdgesLabel.FindChild(i);
         // Creating TNaming_Selector on label
         TNaming_Selector Selector(SelEdge);
