@@ -4,6 +4,7 @@
 #include <TDF_Label.hxx>
 #include <TDF_LabelMap.hxx>
 #include <TDF_ChildIterator.hxx>
+#include <TDF_Tool.hxx>
 #include <TDF_MapIteratorOfLabelMap.hxx>
 
 #include <TNaming_NamedShape.hxx>
@@ -402,6 +403,18 @@ void runCase3(){
     Handle(TNaming_NamedShape) cutBoxNamedShape;
     cutBoxLabel.FindAttribute(TNaming_NamedShape::GetID(), cutBoxNamedShape);
 
+    // We're going to add data to the Data Framework. This data will be added to
+    // the third node under the Root: we called it myBoxCutLabel. The data we are
+    // adding corresponds to the result box from the Cut operation, and will store
+    // the Modified, Deleted, and other relevant data that the Data Framework
+    // needs.
+
+    TDF_Label modifiedFacesLabel     = myBoxCutLabel.FindChild(2); // remember, 1 was for the result of the Cut operation
+    TDF_Label deletedFacesLabel      = myBoxCutLabel.FindChild(3);
+    TDF_Label intersectingFacesLabel = myBoxCutLabel.FindChild(4);
+    TDF_Label newFacesLabel          = myBoxCutLabel.FindChild(5);
+
+
     // like above, this is not necessary b/c I still have a reference to cutBox from
     // earlier, but for completeness and b/c IRL (in real life) this will be done in a
     // separate function, I'm putting it in.
@@ -457,23 +470,13 @@ void runCase3(){
             return;
         }
         else {
-            // We're going to add data to the Data Framework. This data will be added to
-            // the third node under the Root: we called it myBoxCutLabel. The data we are
-            // adding corresponds to the result box from the Cut operation, and will store
-            // the Modified, Deleted, and other relevant data that the Data Framework
-            // needs.
-
-            TDF_Label modifiedFacesLabel     = myBoxCutLabel.FindChild(2); // remember, 1 was for the result of the Cut operation
-            TDF_Label deletedFacesLabel      = myBoxCutLabel.FindChild(3);
-            TDF_Label intersectingFacesLabel = myBoxCutLabel.FindChild(4);
-            TDF_Label newFacesLabel          = myBoxCutLabel.FindChild(5);
-
-            // Finally time to store the result of the Cut operation on Child 1 of myBoxCutLabel -> we called this label
-            // resultCutLabel earlier
-            TNaming_Builder resultBoxBuilder(resultCutLabel);
+            // The result of the operation gets stored in the root of this branch of our tree. Underneath this node we
+            // have Children for the Box used to cut from the original, as well as for deleted faces, modified  faces,
+            // etc...
+            TNaming_Builder resultBoxBuilder(myBoxCutLabel);
             const TopoDS_Shape& preCutBox = mkCut.Shape1(); // first shape involved in boolean operation, i.e. myBox
-            // The two arguments here are OldShape and NewShape, respectively. This stores in resultCutLabel a Modified
-            // attribute wich describes NewShape as a Modification of OldShape
+            // The two arguments here are OldShape and NewShape, respectively. This stores in myBoxCutLabel a Modified
+            // attribute which describes NewShape as a Modification of OldShape
             resultBoxBuilder.Modify(preCutBox, resultBox);
 
             // Going one level deeper, we need to store in the Data Framework the modified faces.
@@ -511,6 +514,7 @@ void runCase3(){
                 for (; modifiedFacesIterator.More(); modifiedFacesIterator.Next()){
                     const TopoDS_Shape& possiblyModifiedFace = modifiedFacesIterator.Value();
                     if (!currentFace.IsSame(possiblyModifiedFace))
+                        std::cout << "Added a face to Modified" << std::endl;
                         modifiedFacesBuilder.Modify(currentFace, possiblyModifiedFace);
                 }
             }
@@ -556,6 +560,7 @@ void runCase3(){
                         // Uhm, the documentation has a lot to say about this NamedShape method. :-/
                         Handle(TNaming_NamedShape) aNamedShape = TNaming_Tool::NamedShape(newShape, newFacesLabel);
                         if (aNamedShape.IsNull() || aNamedShape->Evolution() != TNaming_MODIFY){
+                            std::cout << "Added New Face" << std::endl;
                             newFacesBuilder.Generated(currentFace, newShape);
                         }
                     }
@@ -568,7 +573,7 @@ void runCase3(){
     // operation: we've cut stuff, and we've stored all the necessary data in the Data Framework. So, this means that,
     // although the Indexes between the Faces of myBox and resultBox may be different, I SHOULD be able to use the
     // Selector thing from earlier to get a constant reference to a given face...
-    printShapeInfos(myBox, cutBox, resultBox);
+    //printShapeInfos(myBox, cutBox, resultBox);
 
     // NOTE: if you pipe this output into a file, say "./occTest > tdfShapes.txt" you can then feed that txt file to the
     // parser2.py that I posted on the Forum "python parser2.py tdfShapes.txt" to get a side-by-side comparison
@@ -592,62 +597,72 @@ void runCase3(){
     // anything out of it. This FindAttribute stores the Shape associated with this label in topFaceNamedShape
     myBoxTopLabel.FindAttribute(TNaming_NamedShape::GetID(), topFaceNamedShape);
     const TopoDS_Shape& theTopFace = TNaming_Tool::CurrentShape(topFaceNamedShape);
-    std::cout << "The shape info for the recovered top face" << std::endl;
-    printShapeInfo(theTopFace);
+    //std::cout << "The shape info for the recovered top face" << std::endl;
+    //printShapeInfo(theTopFace);
+
+    std::cout << "--------Dump of NamedShape Attribute of newFacesLabel ------" << std::endl;
+    Handle(TNaming_NamedShape) newFacesNamedShape;
+    newFacesLabel.FindAttribute(TNaming_NamedShape::GetID(), newFacesNamedShape);
+    newFacesNamedShape->Dump(std::cout);
+    std::cout << "--------Dump of newFacesLabel-------" << std::endl;
+    newFacesLabel.Dump(std::cout);
+    //std::cout << "--------Deep Dump of aLabel-------" << std::endl;
+    //TDF_Tool::DeepDump(std::cout, aLabel);
+
 }
 
 void runCase4(){
-// Created on: 1999-12-29
-// Created by: Sergey RUIN
-// Copyright (c) 1999-1999 Matra Datavision
-// Copyright (c) 1999-2014 OPEN CASCADE SAS
-//
-// This file is part of Open CASCADE Technology software library.
-//
-// This library is free software; you can redistribute it and / or modify it
-// under the terms of the GNU Lesser General Public version 2.1 as published
-// by the Free Software Foundation, with special exception defined in the file
-// OCCT_LGPL_EXCEPTION.txt. Consult the file LICENSE_LGPL_21.txt included in OCCT
-// distribution for complete text of the license and disclaimer of any warranty.
-//
-// Alternatively, this file may be used under the terms of Open CASCADE
-// commercial license or contractual agreement.
+//// Created on: 1999-12-29
+//// Created by: Sergey RUIN
+//// Copyright (c) 1999-1999 Matra Datavision
+//// Copyright (c) 1999-2014 OPEN CASCADE SAS
+////
+//// This file is part of Open CASCADE Technology software library.
+////
+//// This library is free software; you can redistribute it and / or modify it
+//// under the terms of the GNU Lesser General Public version 2.1 as published
+//// by the Free Software Foundation, with special exception defined in the file
+//// OCCT_LGPL_EXCEPTION.txt. Consult the file LICENSE_LGPL_21.txt included in OCCT
+//// distribution for complete text of the license and disclaimer of any warranty.
+////
+//// Alternatively, this file may be used under the terms of Open CASCADE
+//// commercial license or contractual agreement.
 
-//#include <gp_Vec.hxx>
-//#include <gp_Trsf.hxx>
-//#include <gp_Pnt.hxx>
+////#include <gp_Vec.hxx>
+////#include <gp_Trsf.hxx>
+////#include <gp_Pnt.hxx>
 
-//#include <TopoDS.hxx>
-//#include <TopoDS_Shape.hxx>
-//#include <TopoDS_Face.hxx>
-//#include <TopTools_ListOfShape.hxx>
-//#include <TopTools_MapOfShape.hxx>
-//#include <TopTools_ListIteratorOfListOfShape.hxx>
-//#include <TopExp_Explorer.hxx>
+////#include <TopoDS.hxx>
+////#include <TopoDS_Shape.hxx>
+////#include <TopoDS_Face.hxx>
+////#include <TopTools_ListOfShape.hxx>
+////#include <TopTools_MapOfShape.hxx>
+////#include <TopTools_ListIteratorOfListOfShape.hxx>
+////#include <TopExp_Explorer.hxx>
 
-//#include <TopOpeBRepBuild_HBuilder.hxx>
+////#include <TopOpeBRepBuild_HBuilder.hxx>
 
-//#include <BRepPrimAPI_MakeBox.hxx>
-//#include <BRepFilletAPI_MakeFillet.hxx>
+////#include <BRepPrimAPI_MakeBox.hxx>
+////#include <BRepFilletAPI_MakeFillet.hxx>
 
-//#include <BRepAlgo_Cut.hxx>
-//#include <BRepAlgo.hxx>
+////#include <BRepAlgo_Cut.hxx>
+////#include <BRepAlgo.hxx>
 
-//#include <TDF_Data.hxx>
-//#include <TDF_Label.hxx>
-//#include <TDF_LabelMap.hxx>
-//#include <TDF_ChildIterator.hxx>
-//#include <TDF_MapIteratorOfLabelMap.hxx>
+////#include <TDF_Data.hxx>
+////#include <TDF_Label.hxx>
+////#include <TDF_LabelMap.hxx>
+////#include <TDF_ChildIterator.hxx>
+////#include <TDF_MapIteratorOfLabelMap.hxx>
 
-//#include <TNaming_NamedShape.hxx>
-//#include <TNaming_Selector.hxx>
-//#include <TNaming_Tool.hxx>
-//#include <TNaming_Builder.hxx>
-//#include <TNaming.hxx>
+////#include <TNaming_NamedShape.hxx>
+////#include <TNaming_Selector.hxx>
+////#include <TNaming_Tool.hxx>
+////#include <TNaming_Builder.hxx>
+////#include <TNaming.hxx>
 
-// =======================================================================================
-// This sample contains template for typical actions with OCAF Topologigal Naming services
-// =======================================================================================
+//// =======================================================================================
+//// This sample contains template for typical actions with OCAF Topologigal Naming services
+//// =======================================================================================
 
 //#ifdef DEB
 
@@ -659,7 +674,7 @@ void runCase4(){
 
 //void Sample()
 //{
-  // Starting with data framework 
+  //// Starting with data framework 
   //Handle(TDF_Data) DF = new TDF_Data();
   //TDF_Label aLabel = DF->Root();
 
@@ -1008,7 +1023,7 @@ void runCase4(){
   ////
   ////Result_1 and Result_2 are the same shapes
   ////=========================================
-////}
+//}
 }
 
 int main(){
