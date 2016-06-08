@@ -6,6 +6,7 @@
 
 #include <TDF_Data.hxx>
 #include <TDF_Label.hxx>
+#include <TDF_TagSource.hxx>
 #include <TDF_LabelMap.hxx>
 #include <TDF_ChildIterator.hxx>
 #include <TDF_Tool.hxx>
@@ -1061,14 +1062,227 @@ void runCase4(){
     Handle(TNaming_NamedShape) ResultNS;
     CutLabel.FindAttribute(TNaming_NamedShape::GetID(), ResultNS);
     const TopoDS_Shape& Result_1 = ResultNS->Get(); // here is result of cut operation
+    std::cout << "Result_1, i.e. shape in CutLabel" << std::endl;
+    //printShapeInfo(Result_1);
     ResultNS.Nullify();
     Box1Label.FindAttribute(TNaming_NamedShape::GetID(), ResultNS);
     const TopoDS_Shape& Result_2 = TNaming_Tool::CurrentShape(ResultNS);//here is also result of cut operation
+    std::cout << "Result_2, i.e. shape in Box1Label" << std::endl;
+    //printShapeInfo(Result_2);
 
     //
     //Result_1 and Result_2 are the same shapes
     //=========================================
+
+
+    //-------------------------------------------------------------
     // ------- END OF ORIGINAL OPENCASCADE TNAMING EXAMPLE --------
+    //-------------------------------------------------------------
+
+
+
+    //-------------------------------------------------------------
+    // 7. Break two edges such that instead of being one edge, they 
+    //    are two. We'll do this on one of the Selected edges and on
+    //    one that wasn't selected, and check the difference.
+    //-------------------------------------------------------------
+
+    // Move it a bit.
+    gp_Pnt cut_loc = gp_Pnt(25, -5, -5);
+    gp_Dir cut_dir = gp_Dir(0, 0, 1);
+    gp_Ax2 cut_ax2 = gp_Ax2(cut_loc, cut_dir);
+    BRepPrimAPI_MakeBox MKBOX3(cut_ax2, 20., 20., 150);
+
+    TopoDS_Shape myBox3 = MKBOX3.Shape();
+    std::cout << "Box3" << std::endl;
+
+    // New nodes on root of the Data Frame
+    TDF_Label Box3Label = aLabel.FindChild(6);
+    // The following is wrong. See comment below.
+    // TDF_Label NewCutBoxLabel = TDF_TagSource::NewChild(aLabel);
+    TDF_Label NewCutBoxLabel = aLabel.FindChild(7);
+
+    // Children nodes, to hold faces. Note the use of TDF_TagSource. You must label ALL children labels using
+    // TDF_TagSource, or NONE.
+    TDF_Label bx3TopLbl = TDF_TagSource::NewChild(Box3Label);
+    TDF_Label bx3BotLbl = TDF_TagSource::NewChild(Box3Label);
+    TDF_Label bx3FrtLbl = TDF_TagSource::NewChild(Box3Label);
+    TDF_Label bx3BckLbl = TDF_TagSource::NewChild(Box3Label);
+    TDF_Label bx3LftLbl = TDF_TagSource::NewChild(Box3Label);
+    TDF_Label bx3RgtLbl = TDF_TagSource::NewChild(Box3Label);
+    std::cout << "Tag for bx3TopLbl = " << bx3TopLbl.Tag() << std::endl;
+    std::cout << "Tag for bx3BckLbl = " << bx3BckLbl.Tag() << std::endl;
+
+    TDF_Label newCutTopLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+    TDF_Label newCutBotLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+    TDF_Label newCutFrtLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+    TDF_Label newCutBckLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+    TDF_Label newCutLftLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+    TDF_Label newCutRgtLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+
+    TNaming_Builder myBuilder(Box3Label);
+    myBuilder.Generated(MKBOX3.Shape());
+
+    TNaming_Builder myBuilder1(bx3TopLbl);
+    myBuilder1.Generated(MKBOX3.TopFace());
+
+    TNaming_Builder myBuilder2(bx3BotLbl);
+    myBuilder2.Generated(MKBOX3.BottomFace());
+
+    TNaming_Builder myBuilder3(bx3FrtLbl);
+    myBuilder3.Generated(MKBOX3.FrontFace());
+
+    TNaming_Builder myBuilder4(bx3BckLbl);
+    myBuilder4.Generated(MKBOX3.BackFace());
+
+    TNaming_Builder myBuilder5(bx3LftLbl);
+    myBuilder5.Generated(MKBOX3.LeftFace());
+
+    TNaming_Builder myBuilder6(bx3RgtLbl);
+    myBuilder6.Generated(MKBOX3.RightFace());
+
+    // recover one of the selected edges
+    Handle(TNaming_NamedShape) rcvdEdgeNS;
+    SelectedEdgesLabel.FindChild(4, Standard_False).FindAttribute(TNaming_NamedShape::GetID(), rcvdEdgeNS);
+    std::cout << "Recovered edge data" << std::endl;
+    printShapeInfo(rcvdEdgeNS->Get(), TopAbs_EDGE);
+    std::cout << "shape type = " << rcvdEdgeNS->Get().ShapeType() << std::endl;
+    TopTools_IndexedMapOfShape mapOfShapes;
+    TopExp::MapShapes(rcvdEdgeNS->Get(), TopAbs_EDGE, mapOfShapes);
+    i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        TopoDS_Edge curEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
+        std::cout << "     edge in wire ->";
+        printShapeInfo(curEdge, TopAbs_EDGE);
+    }
+
+    // Using one of the references from the occ demo, cut out box3
+    BRepAlgo_Cut bx3MkCut (Result_2, MKBOX3.Shape());
+    // write it out so we can make sure it looks right. it does.
+    BRepTools::Write(bx3MkCut.Shape(), "myBox3.brep");
+
+    // Do we still get a good reference to the selected edge?
+    std::cout << "Recovered edge data, after cut" << std::endl;
+    printShapeInfo(rcvdEdgeNS->Get(), TopAbs_EDGE);
+    std::cout << "shape type = " << rcvdEdgeNS->Get().ShapeType() << std::endl;
+    mapOfShapes.Clear();
+    TopExp::MapShapes(rcvdEdgeNS->Get(), TopAbs_EDGE, mapOfShapes);
+    i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        TopoDS_Edge curEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
+        std::cout << "     edge in wire ->";
+        printShapeInfo(curEdge, TopAbs_EDGE);
+    }
+
+    Handle(TNaming_NamedShape) rcvdEdgeNS2;
+    SelectedEdgesLabel.FindChild(4, Standard_False).FindAttribute(TNaming_NamedShape::GetID(), rcvdEdgeNS2);
+    std::cout << "re-Recovered edge data, after cut" << std::endl;
+    printShapeInfo(rcvdEdgeNS2->Get(), TopAbs_EDGE);
+    std::cout << "shape type = " << rcvdEdgeNS2->Get().ShapeType() << std::endl;
+    mapOfShapes.Clear();
+    TopExp::MapShapes(rcvdEdgeNS2->Get(), TopAbs_EDGE, mapOfShapes);
+    i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        TopoDS_Edge curEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
+        std::cout << "     edge in wire ->";
+        printShapeInfo(curEdge, TopAbs_EDGE);
+    }
+
+    // So, it's still a single edge. Should be two edges, since it got cut. Let's update the Data Framework and see what
+    // happens
+
+    TDF_Label CutShape      = TDF_TagSource::NewChild(NewCutBoxLabel);
+    TDF_Label Modified      = TDF_TagSource::NewChild(NewCutBoxLabel); 
+    TDF_Label Deleted       = TDF_TagSource::NewChild(NewCutBoxLabel); 
+    TDF_Label Intersections = TDF_TagSource::NewChild(NewCutBoxLabel); 
+    TDF_Label NewFaces      = TDF_TagSource::NewChild(NewCutBoxLabel); 
+
+    // push CUT results in DF as modification of Box1
+    TNaming_Builder resultBuilder (NewCutBoxLabel);
+    resultBuilder.Modify (bx3MkCut.Shape1(), bx3MkCut.Shape());
+
+    // Select the 'cut shape', for some reason
+    TNaming_Selector ToolSelector2(CutShape);
+    ToolSelector2.Select(MKBOX3.Shape(), MKBOX3.Shape());
+
+    //push in the DF modified faces
+
+    TNaming_Builder ModBuilder2(Modified);
+    mapOfShapes.Clear();
+    TopExp::MapShapes(bx3MkCut.Shape1(), TopAbs_FACE, mapOfShapes);
+    i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        const TopoDS_Shape& Root = mapOfShapes.FindKey(i);
+        const TopTools_ListOfShape& Shapes = bx3MkCut.Modified (Root);
+        TopTools_ListIteratorOfListOfShape ShapesIterator (Shapes);
+        for (;ShapesIterator.More (); ShapesIterator.Next ()) {
+            const TopoDS_Shape& newShape = ShapesIterator.Value ();
+            // TNaming_Evolution == MODIFY
+            if (!Root.IsSame (newShape))
+                ModBuilder2.Modify (Root,newShape );
+        }
+    }
+
+    //push in the DF deleted faces
+    TNaming_Builder DelBuilder2(Deleted);
+    mapOfShapes.Clear();
+    TopExp::MapShapes(bx3MkCut.Shape1(), TopAbs_FACE, mapOfShapes);
+    i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        const TopoDS_Shape& Root = mapOfShapes.FindKey(i);
+        if (bx3MkCut.IsDeleted (Root))
+            DelBuilder2.Delete (Root);
+    }
+
+    // push in the DF section edges
+    TNaming_Builder IntersBuilder2(Intersections);
+    Handle(TopOpeBRepBuild_HBuilder) build = bx3MkCut.Builder();  
+    TopTools_ListIteratorOfListOfShape its = build->Section();
+    for (; its.More(); its.Next()) {
+        IntersBuilder2.Select(its.Value(),its.Value());
+    }
+
+    // push in the DF new faces added to the object:
+    TNaming_Builder newBuilder2 (NewFaces);
+    mapOfShapes.Clear();
+    TopExp::MapShapes(bx3MkCut.Shape2(), TopAbs_FACE, mapOfShapes);
+    i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        const TopoDS_Shape& F = mapOfShapes.FindKey(i);
+        const TopTools_ListOfShape& modified = bx3MkCut.Modified(F);
+        if (!modified.IsEmpty()) {
+            TopTools_ListIteratorOfListOfShape itr(modified);
+            for (; itr.More (); itr.Next ()) {
+                const TopoDS_Shape& newShape = itr.Value();
+                Handle(TNaming_NamedShape) NS = TNaming_Tool::NamedShape(newShape, NewFaces);
+                if (NS.IsNull() || NS->Evolution() != TNaming_MODIFY) {
+                    // TNaming_Evolution == GENERATED
+                    newBuilder2.Generated(F, newShape); 	
+                } // if (NS.IsNul())...
+            } // for (; itr.More()...
+        } // if (!modified.IsEmpty()...
+    } //for (; ShapeExplorer.More()...
+
+    //Handle(TNaming_NamedShape) rcvdEdgeNS2;
+    SelectedEdgesLabel.FindChild(4, Standard_False).FindAttribute(TNaming_NamedShape::GetID(), rcvdEdgeNS2);
+    std::cout << std::endl << "re-Recovered edge data, after cut and after updating the Data Framework" << std::endl;
+    printShapeInfo(rcvdEdgeNS2->Get(), TopAbs_EDGE);
+    std::cout << "shape type = " << rcvdEdgeNS2->Get().ShapeType() << std::endl;
+    mapOfShapes.Clear();
+    TopExp::MapShapes(rcvdEdgeNS2->Get(), TopAbs_EDGE, mapOfShapes);
+    i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        TopoDS_Edge curEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
+        std::cout << "     edge in wire ->";
+        printShapeInfo(curEdge, TopAbs_EDGE);
+    }
+
+
+
+    //-----------------------------------------------------------
+    // Bottom Matter
+    //----------------------------------------------------------
+
     Handle(TNaming_NamedShape) origBox;
     Box1Label.FindAttribute(TNaming_NamedShape::GetID(), origBox);
     //std::cout << "About to print out recovered box, I think" << std::endl;
@@ -1128,13 +1342,14 @@ void runCase4(){
 
     //std::cout << "Here is a dump of the whole tree" << std::endl;
     TDF_IDFilter myFilter;
-    //TDF_AttributeIndexedMap myMap;
+    TDF_AttributeIndexedMap myMap;
     myFilter.Keep(TNaming_NamedShape::GetID());
     myFilter.Keep(TDataStd_AsciiString::GetID());
     myFilter.Keep(TNaming_UsedShapes::GetID());
     //aLabel.ExtendedDump(std::cout, myFilter, myMap);
     //aLabel.Dump(std::cout);
-    TDF_Tool::ExtendedDeepDump(std::cout, DF, myFilter);
+    //TDF_Tool::ExtendedDeepDump(std::cout, DF, myFilter);
+    //TDF_Tool::DeepDump(std::cout, DF);
 }
 
 //Standard_OStream& TNaming_NamedShape::Dump
