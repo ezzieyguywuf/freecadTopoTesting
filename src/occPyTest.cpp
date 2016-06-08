@@ -1,13 +1,20 @@
 #include <iostream>
 
+#include <TCollection_AsciiString.hxx>
+
+#include <TDataStd_AsciiString.hxx>
+
 #include <TDF_Data.hxx>
 #include <TDF_Label.hxx>
 #include <TDF_LabelMap.hxx>
 #include <TDF_ChildIterator.hxx>
 #include <TDF_Tool.hxx>
 #include <TDF_MapIteratorOfLabelMap.hxx>
+#include <TDF_IDFilter.hxx>
+#include <TDF_AttributeIndexedMap.hxx>
 
 #include <TNaming_NamedShape.hxx>
+#include <TNaming_UsedShapes.hxx>
 #include <TNaming_Selector.hxx>
 #include <TNaming_Tool.hxx>
 #include <TNaming_Builder.hxx>
@@ -613,37 +620,37 @@ void runCase3(){
 
     //TNaming_Selector myTopFaceSelector(resultCutLabel); // creates a selector at this Label
 
-    Handle(TNaming_NamedShape) topFaceNamedShape;
-    // myBoxTopLabel was defined waaaaay at the beginning of all this, when we first created myBox, before we Cut
-    // anything out of it. This FindAttribute stores the Shape associated with this label in topFaceNamedShape
-    myBoxTopLabel.FindAttribute(TNaming_NamedShape::GetID(), topFaceNamedShape);
-    const TopoDS_Shape& theTopFace = TNaming_Tool::CurrentShape(topFaceNamedShape);
-    std::cout << "The shape info for the recovered top face" << std::endl;
-    printShapeInfo(theTopFace);
-    TopTools_IndexedMapOfShape mapOfEdges;
-    TopExp::MapShapes(theTopFace, TopAbs_EDGE, mapOfEdges);
-    std::cout << "num Edges = " << mapOfEdges.Extent() << std::endl;
+    //Handle(TNaming_NamedShape) topFaceNamedShape;
+    //// myBoxTopLabel was defined waaaaay at the beginning of all this, when we first created myBox, before we Cut
+    //// anything out of it. This FindAttribute stores the Shape associated with this label in topFaceNamedShape
+    //myBoxTopLabel.FindAttribute(TNaming_NamedShape::GetID(), topFaceNamedShape);
+    //const TopoDS_Shape& theTopFace = TNaming_Tool::CurrentShape(topFaceNamedShape);
+    //std::cout << "The shape info for the recovered top face" << std::endl;
+    //printShapeInfo(theTopFace);
+    //TopTools_IndexedMapOfShape mapOfEdges;
+    //TopExp::MapShapes(theTopFace, TopAbs_EDGE, mapOfEdges);
+    //std::cout << "num Edges = " << mapOfEdges.Extent() << std::endl;
 
-    // ok, now time to check if theTopFace is the same as the original Top Face of myBox
-    TopTools_IndexedMapOfShape mapOfShapes;
-    TopExp::MapShapes(myBox, TopAbs_FACE, mapOfShapes);
-    int i=0;
-    for (int i = 1; i <= mapOfShapes.Extent(); i++){
-        TopoDS_Face curFace = TopoDS::Face(mapOfShapes.FindKey(i));
-        Standard_Boolean res1 = curFace.IsEqual(theTopFace);
-        Standard_Boolean res2 = curFace.IsSame(theTopFace);
-        TopTools_IndexedMapOfShape mapOfEdges;
-        TopExp::MapShapes(curFace, TopAbs_EDGE, mapOfEdges);
-        std::cout << "For i=" << i <<" IsEqual=" << res1 << " IsSame=" << res2 << " numEdges=" << mapOfEdges.Extent() << " ";
-        printShapeInfo(curFace);
-    }
+    //// ok, now time to check if theTopFace is the same as the original Top Face of myBox
+    //TopTools_IndexedMapOfShape mapOfShapes;
+    //TopExp::MapShapes(myBox, TopAbs_FACE, mapOfShapes);
+    //int i=0;
+    //for (int i = 1; i <= mapOfShapes.Extent(); i++){
+        //TopoDS_Face curFace = TopoDS::Face(mapOfShapes.FindKey(i));
+        //Standard_Boolean res1 = curFace.IsEqual(theTopFace);
+        //Standard_Boolean res2 = curFace.IsSame(theTopFace);
+        //TopTools_IndexedMapOfShape mapOfEdges;
+        //TopExp::MapShapes(curFace, TopAbs_EDGE, mapOfEdges);
+        //std::cout << "For i=" << i <<" IsEqual=" << res1 << " IsSame=" << res2 << " numEdges=" << mapOfEdges.Extent() << " ";
+        //printShapeInfo(curFace);
+    //}
 
-    std::cout << "--------Dump of NamedShape Attribute of newFacesLabel ------" << std::endl;
-    Handle(TNaming_NamedShape) newFacesNamedShape;
-    newFacesLabel.FindAttribute(TNaming_NamedShape::GetID(), newFacesNamedShape);
-    newFacesNamedShape->Dump(std::cout);
-    std::cout << "--------Dump of newFacesLabel-------" << std::endl;
-    newFacesLabel.Dump(std::cout);
+    //std::cout << "--------Dump of NamedShape Attribute of newFacesLabel ------" << std::endl;
+    //Handle(TNaming_NamedShape) newFacesNamedShape;
+    //newFacesLabel.FindAttribute(TNaming_NamedShape::GetID(), newFacesNamedShape);
+    //newFacesNamedShape->Dump(std::cout);
+    //std::cout << "--------Dump of newFacesLabel-------" << std::endl;
+    //newFacesLabel.Dump(std::cout);
 
 }
 
@@ -680,6 +687,9 @@ void runCase4(){
     TDF_Label aLabel = DF->Root();
 
     TopoDS_Shape Shape, Context;
+    TCollection_AsciiString myName;
+    Handle(TDataStd_AsciiString) nameAttribute;
+    nameAttribute = new TDataStd_AsciiString();
 
     // ======================================================
     // Creating  NamedShapes with different type of Evolution
@@ -709,6 +719,10 @@ void runCase4(){
 
     TNaming_Builder Box1Ins (Box1Label);
     Box1Ins.Generated (MKBOX1.Shape());
+    myName = "Box1, TopoDS_Shape type, parent";
+    nameAttribute = new TDataStd_AsciiString();
+    nameAttribute->Set(myName);
+    Box1Label.AddAttribute(nameAttribute);
 
     TNaming_Builder Top1FaceIns (Top1);
     TopoDS_Face Top1Face = MKBOX1.TopFace ();
@@ -750,6 +764,10 @@ void runCase4(){
 
     TNaming_Builder Box2Ins (Box2Label);
     Box2Ins.Generated (MKBOX2.Shape());
+    myName = "Box2, TopoDS_Shape type, parent";
+    nameAttribute = new TDataStd_AsciiString();
+    nameAttribute->Set(myName);
+    Box2Label.AddAttribute(nameAttribute);
 
     TNaming_Builder Top2FaceIns (Top2);
     TopoDS_Face Top2Face = MKBOX2.TopFace ();
@@ -807,6 +825,12 @@ void runCase4(){
 
     BRepFilletAPI_MakeFillet MKFILLET(box1);// fillet's algo
     TDF_Label SelectedEdgesLabel = aLabel.FindChild(SelectedEdgesPOS); //Label for selected edges
+
+    myName = "SelectedEdgesLabel, this node contains no TopoDS_Shape, children contain TopoDS_Edges";
+    nameAttribute = new TDataStd_AsciiString();
+    nameAttribute->Set(myName);
+    SelectedEdgesLabel.AddAttribute(nameAttribute);
+
     TopTools_IndexedMapOfShape mapOfEdges;
     TopExp::MapShapes(top1face, TopAbs_EDGE, mapOfEdges);
     Standard_Integer i=1;
@@ -847,6 +871,11 @@ void runCase4(){
     // TNaming_Evolution == MODIFY
     TNaming_Builder bFillet(FilletLabel);
     bFillet.Modify(box1, MKFILLET.Shape());
+
+    myName = "FilletLabel, TopoDS_Shape type, parent -> filletedBox. Children are faces and such";
+    nameAttribute = new TDataStd_AsciiString();
+    nameAttribute->Set(myName);
+    FilletLabel.AddAttribute(nameAttribute);
 
     //New faces generated from edges
     TopTools_MapOfShape View;
@@ -959,6 +988,10 @@ void runCase4(){
             TNaming_Builder CutBuilder (CutLabel);
             // TNaming_Evolution == MODIFY
             CutBuilder.Modify (ObjSh, newS1);
+            myName = "CutLabel, TopoDS_Shape type, parent -> cutBox. Children are faces and such";
+            nameAttribute = new TDataStd_AsciiString();
+            nameAttribute->Set(myName);
+            CutLabel.AddAttribute(nameAttribute);
 
             //push in the DF modified faces
             View.Clear();
@@ -1040,59 +1073,77 @@ void runCase4(){
     Box1Label.FindAttribute(TNaming_NamedShape::GetID(), origBox);
     //std::cout << "About to print out recovered box, I think" << std::endl;
     //printShapeInfo(origBox->Get());
-    std::cout << "About to print out edges from recovered box, I think" << std::endl;
-    printShapeInfo(origBox->Get(), TopAbs_EDGE);
+    //std::cout << "About to print out edges from recovered box, I think" << std::endl;
+    //printShapeInfo(origBox->Get(), TopAbs_EDGE);
 
     Handle(TNaming_NamedShape) filletedBox;
     FilletLabel.FindAttribute(TNaming_NamedShape::GetID(), filletedBox);
     //std::cout << "About to print out faces from recovered filleted box" << std::endl;
     //printShapeInfo(filletedBox->Get());
-    std::cout << "About to print out edges from recovered filleted box, I think" << std::endl;
-    printShapeInfo(filletedBox->Get(), TopAbs_EDGE);
+    //std::cout << "About to print out edges from recovered filleted box, I think" << std::endl;
+    //printShapeInfo(filletedBox->Get(), TopAbs_EDGE);
 
-    TDF_ChildIterator selectedEdges(SelectedEdgesLabel);
-    BRepFilletAPI_MakeFillet modFillet(origBox->Get());
+    //TDF_ChildIterator selectedEdges(SelectedEdgesLabel);
+    //BRepFilletAPI_MakeFillet modFillet(origBox->Get());
 
     // Let's try to change the Fillet radius an a single one of the edges from 5 to 2
-    i=0;
-    for(; selectedEdges.More(); selectedEdges.Next(), i++){
-        Standard_Real radius = 5.;
-        if (i == 2){
-            std::cout << "Changing radius from 5 to 2 for following edge:" << std::endl;
-            radius = 2.;
-        }
-        TDF_Label anEdgeLabel = selectedEdges.Value();
-        Handle(TNaming_NamedShape) anEdgeNamedShape; 
-        anEdgeLabel.FindAttribute(TNaming_NamedShape::GetID(), anEdgeNamedShape);
-        std::cout << "Printing attributes for a 'selected' edge" << std::endl;
-        printShapeInfo(anEdgeNamedShape->Get(), TopAbs_EDGE);
-        modFillet.Add(radius, TopoDS::Edge(anEdgeNamedShape->Get()));
-    }
+    //i=0;
+    //for(; selectedEdges.More(); selectedEdges.Next(), i++){
+        //Standard_Real radius = 5.;
+        //if (i == 2){
+            //std::cout << "Changing radius from 5 to 2 for following edge:" << std::endl;
+            //radius = 2.;
+        //}
+        //TDF_Label anEdgeLabel = selectedEdges.Value();
+        //Handle(TNaming_NamedShape) anEdgeNamedShape; 
+        //anEdgeLabel.FindAttribute(TNaming_NamedShape::GetID(), anEdgeNamedShape);
+        //std::cout << "Printing attributes for a 'selected' edge" << std::endl;
+        //printShapeInfo(anEdgeNamedShape->Get(), TopAbs_EDGE);
+        //modFillet.Add(radius, TopoDS::Edge(anEdgeNamedShape->Get()));
+    //}
 
     // TODO: need to update the Data Framework since we've changed things. New node?
-    modFillet.Build();
-    TopoDS_Shape newFilletedBox = modFillet.Shape();
-    std::cout << "These are the Faces of the new Filleted box" << std::endl;
-    printShapeInfo(newFilletedBox);
-    std::cout << "These are the edges of the new Filleted box" << std::endl;
-    printShapeInfo(newFilletedBox, TopAbs_EDGE);
+    //modFillet.Build();
+    //TopoDS_Shape newFilletedBox = modFillet.Shape();
+    //std::cout << "These are the Faces of the new Filleted box" << std::endl;
+    //printShapeInfo(newFilletedBox);
+    //std::cout << "These are the edges of the new Filleted box" << std::endl;
+    //printShapeInfo(newFilletedBox, TopAbs_EDGE);
 
     // output: it appears to work. The box doesn't have the hole in it though. I guess I have to rebuild the whole
     // solid? That makes sense, actually. And I think FreeCAD already takes care of rebuilding stuff, right? We'll just
     // have to get FreeCAD to use these Labels instead of the Indexes that it's using now.
-    Handle(TNaming_NamedShape) recoveredCutBox;
-    Box2Label.FindAttribute(TNaming_NamedShape::GetID(), recoveredCutBox);
-    std::cout << "Here is the recovered Cut Box. Is it in the correct location?" << std::endl;
-    printShapeInfo(recoveredCutBox->Get());
-    // Yup, it's in the correct location!
-    BRepAlgo_Cut mkCut(origBox->Get(), recoveredCutBox->Get());
-    TopoDS_Shape newFilletedBoxWithCut = mkCut.Shape();
-    std::cout << "Here is the final Box with the modified Fillet and the Cut rebuilt" << std::endl;
-    printShapeInfo(newFilletedBoxWithCut);
-    std::cout << "And the edges..." << std::endl;
-    printShapeInfo(newFilletedBoxWithCut, TopAbs_EDGE);
+    //Handle(TNaming_NamedShape) recoveredCutBox;
+    //Box2Label.FindAttribute(TNaming_NamedShape::GetID(), recoveredCutBox);
+    //std::cout << "Here is the recovered Cut Box. Is it in the correct location?" << std::endl;
+    //printShapeInfo(recoveredCutBox->Get());
 
+    // Yup, it's in the correct location!
+    //BRepAlgo_Cut mkCut(origBox->Get(), recoveredCutBox->Get());
+    //TopoDS_Shape newFilletedBoxWithCut = mkCut.Shape();
+    //std::cout << "Here is the final Box with the modified Fillet and the Cut rebuilt" << std::endl;
+    //printShapeInfo(newFilletedBoxWithCut);
+    //std::cout << "And the edges..." << std::endl;
+    //printShapeInfo(newFilletedBoxWithCut, TopAbs_EDGE);
+
+    //std::cout << "Here is a dump of the whole tree" << std::endl;
+    TDF_IDFilter myFilter;
+    //TDF_AttributeIndexedMap myMap;
+    myFilter.Keep(TNaming_NamedShape::GetID());
+    myFilter.Keep(TDataStd_AsciiString::GetID());
+    myFilter.Keep(TNaming_UsedShapes::GetID());
+    //aLabel.ExtendedDump(std::cout, myFilter, myMap);
+    //aLabel.Dump(std::cout);
+    TDF_Tool::ExtendedDeepDump(std::cout, DF, myFilter);
 }
+
+//Standard_OStream& TNaming_NamedShape::Dump
+//(Standard_OStream& anOS) const
+//{
+    //anOS << "Testing, one two" << std::endl;
+    //return anOS;
+//}
+
 
 int main(){
     //runCase1();
