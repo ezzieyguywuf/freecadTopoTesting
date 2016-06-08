@@ -135,6 +135,7 @@ particular TDF_Label that oldes a TNaming_NamedShape is sufficient to maintain a
 non-volatile reference to the TopoDS_Shape that the TNaming_NamedShape is holding. All it
 takes is a simple `myNamedShape->Get()` to grab the TopoDS_Shape.
 
+## Selector caveat
 Upon further reading, though, the occ documentation goes to great lengths to describe the
 TNaming_Selector mechanism, and seems to imply that it is _this_ that provides the robust
 references we are looking for. More extensive testing should be done to verify this, but
@@ -156,3 +157,56 @@ interchangeable
 changes in order to re-solve the Selected Shape.
 3. I still don't fully understand this Selection stuff, so stay tuned, and travel with
 caution.
+
+## Modeling History
+In order for the occ TNaming framework to do it's thing, it requires that the Data
+Framework contain certain pieces of information regarding the 'Evolution' of the
+TopoDS_Shape under consideration. The occ documentation provides a nice table
+[here](http://www.opencascade.com/doc/occt-7.0.0/overview/html/occt_user_guides__ocaf.html#occt_ocaf_5_6_1),
+but in short, if a modeling operation results in:
+
+- a Solid or Closed Shell, all the Faces must be recorded
+- a Face or Open Shell, all the Faces and open Edges must be recorded
+- There are other rules and a few exceptions, check the occ documentation
+
+What do I mean by 'must be recorded'? Well, that's what the TNaming_NamedShape is all
+about. You use a TNaming_Builder to record which sub-shapes are changed, and how they are
+changed. Again, I'll refer to [a section in the occ
+documentation](http://www.opencascade.com/doc/occt-7.0.0/overview/html/occt_user_guides__ocaf.html#occt_ocaf_5_6_1)
+for a more detailed (though far from exhaustive, their documentation is not great)
+explanation, but briefly, a TopoDS_Shape can have one of five 'Evolution's:
+
+- PRIMITIVE: new topology, usually created using BRepPrimAPI
+- GENERATED: new topology created from another topology, such as a Face created from an
+  Edge
+- MODIFY: new topology is a modification of another topology, i.e. oldShape=origBox,
+  newShape=boxWithAHole
+- DELETE: some piece of topology was deleted, i.e. a Face on a Box is Deleted to create an
+  open shell
+- SELECTED: see the previous section, this topology is specially marked as something to
+  maintain a constant reference to.
+
+Each of these Evolutions has a "new_shape" and "old_shape", and the occ documentation does
+a decent job explaining what each of these are for each Evolution.
+
+So, any time you cut a hole out of a solid, you need to record what happened to each face
+in the resulting solid. I think in tis case, all Faced are MODIFY.
+
+Something the occ documentation mentions briefly, but which appears to be important, is
+that aside from following these 'rules', the resultant shape itself must also be stored
+with an Evolution. So, for the case of cutting a hole out of a solid, you need to store
+the boxWithAHole as MODIFY with origBox as the old_shape, as well as iterating through all
+the Faces and storing them appropriately.
+
+How do you store the information? Well, the occ documentation doesn't really specify, and
+I'm not sure if it really matter, but I think what makes sense is to follow the example
+from the occ code. In other words:
+
+1. Each modeling operation should create a new node under Root in the Data Framework
+2. Each of these nodes will contain the result of the modeling operation with the
+   appropriate Evoluion
+3. Each of these nodes will contain a list of sub-nodes that will follow the 'rules'
+   outlined above and in the occ documentation, and will contain the proper Evolution for
+   each of the appropriate sub-shapes
+4. For some reason, when Select'ing Edges for a Fillet operation, that Selection gets its
+   own Node.
