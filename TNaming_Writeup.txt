@@ -126,7 +126,33 @@ Here's a typical use-case:
     myBuilder2.Modify( origShape, newShape ); // origShape was somehowe modified (cut, fuse, etc...) into newShape
 
     TNaming_Builder myBuilder3(myLabel3);
-    myBuilder3.Select( anEdge, aFace); // anEdge is an edge within the contex of aFace.
-                                       // The occ example actually provides a TopoDS_Shape
-                                       // as the context, rather than the more specific
-                                       // TopoDS_Face. 
+    myBuilder3.Select( anEdge, aShape); // anEdge is an edge within the contex of aShape.
+
+# How to use TNaming to resolve Topological Naming
+
+Well, in some of the early tests, it appears that simply retaining a reference to a
+particular TDF_Label that oldes a TNaming_NamedShape is sufficient to maintain a constant,
+non-volatile reference to the TopoDS_Shape that the TNaming_NamedShape is holding. All it
+takes is a simple `myNamedShape->Get()` to grab the TopoDS_Shape.
+
+Upon further reading, though, the occ documentation goes to great lengths to describe the
+TNaming_Selector mechanism, and seems to imply that it is _this_ that provides the robust
+references we are looking for. More extensive testing should be done to verify this, but
+for now let's accept the occ documentation at face value.
+
+That being the case, in order to maintain a constant reference to a topological entity,
+that entity must be 'Selected'. This is done by using
+TNaming_Selector.Select(shapeToSelect, contextShape). This stores in the label - which is
+passed to the TNaming_Selector constructor - a TNaming_NamedShape with the TNaming_SELECTED
+Evolution. This is the TNaming_NamedShape you'll want to refer back to if you need that
+Shape back.
+
+Some things to know about Selecting things:
+
+1. TNaming_Builder appears to have a Select method. This method, however, is not ever used
+in the occ example. Instead, TNaming_Selector::Select is used. Not sure if they are
+interchangeable
+2. Apparently, you want to call TNaming_Selector::Solve() any time the contextShape
+changes in order to re-solve the Selected Shape.
+3. I still don't fully understand this Selection stuff, so stay tuned, and travel with
+caution.
