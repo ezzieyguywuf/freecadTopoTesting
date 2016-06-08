@@ -1,3 +1,29 @@
+void cutBoxAndShowThings(TopoDS_Shape origBox);
+
+void cutBoxAndShowThings(TopoDS_Shape origBox){
+    TopoDS_Shape cutBox, newBox;
+    gp_Pnt cut_loc;
+    gp_Dir cut_dir;
+    gp_Ax2 cut_ax2;
+    // create box to cut out and write it out.
+    cut_loc = gp_Pnt(7, 5, 30);
+    cut_dir = gp_Dir(0, 0, -1);
+    cut_ax2 = gp_Ax2(cut_loc, cut_dir);
+    cutBox = BRepPrimAPI_MakeBox(cut_ax2, 5., 5., 5.).Shape();
+
+    // create new box by cutting out the second box from the first
+    BRepAlgoAPI_Cut builder(origBox, cutBox);
+    newBox = builder.Shape();
+
+    // print out Dump to files
+    writeDumpFiles(origBox, cutBox, newBox);
+    //printDumpFile(origBox);
+    //printDumpFile(cutBox);
+    //printDumpFile(newBox);
+
+    writeShapeInfos(origBox, cutBox, newBox);
+    //printShapeInfos(origBox, cutBox, newBox);
+}
 void runCase1(){
     // Variable defs
     TopTools_ListIteratorOfListOfShape iterator;
@@ -941,128 +967,41 @@ void runCase4(){
         printShapeInfo(curEdge, TopAbs_EDGE);
     }
 
-    // Using one of the references from the occ demo, cut out box3
-    BRepAlgo_Cut bx3MkCut (Result_2, MKBOX3.Shape());
-    // write it out so we can make sure it looks right. it does.
-    BRepTools::Write(bx3MkCut.Shape(), "myBox3.brep");
+    //// Using one of the references from the occ demo, cut out box3
+    //BRepAlgo_Cut bx3MkCut (Result_2, MKBOX3.Shape());
+    MakeTrackedCut(Result_2, MKBOX3.Shape(), NewCutBoxLabel);
+    //// write it out so we can make sure it looks right. it does.
+    //BRepTools::Write(bx3MkCut.Shape(), "myBox3.brep");
 
-    // Do we still get a good reference to the selected edge?
-    std::cout << "Recovered edge data, after cut" << std::endl;
-    printShapeInfo(rcvdEdgeNS->Get(), TopAbs_EDGE);
-    std::cout << "shape type = " << rcvdEdgeNS->Get().ShapeType() << std::endl;
-    mapOfShapes.Clear();
-    TopExp::MapShapes(rcvdEdgeNS->Get(), TopAbs_EDGE, mapOfShapes);
-    i=1;
-    for (; i<=mapOfShapes.Extent(); i++){
-        TopoDS_Edge curEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
-        std::cout << "     edge in wire ->";
-        printShapeInfo(curEdge, TopAbs_EDGE);
-    }
+    //// Do we still get a good reference to the selected edge?
+    //std::cout << "Recovered edge data, after cut" << std::endl;
+    //printShapeInfo(rcvdEdgeNS->Get(), TopAbs_EDGE);
+    //std::cout << "shape type = " << rcvdEdgeNS->Get().ShapeType() << std::endl;
+    //mapOfShapes.Clear();
+    //TopExp::MapShapes(rcvdEdgeNS->Get(), TopAbs_EDGE, mapOfShapes);
+    //i=1;
+    //for (; i<=mapOfShapes.Extent(); i++){
+        //TopoDS_Edge curEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
+        //std::cout << "     edge in wire ->";
+        //printShapeInfo(curEdge, TopAbs_EDGE);
+    //}
 
-    Handle(TNaming_NamedShape) rcvdEdgeNS2;
-    SelectedEdgesLabel.FindChild(4, Standard_False).FindAttribute(TNaming_NamedShape::GetID(), rcvdEdgeNS2);
-    std::cout << "re-Recovered edge data, after cut" << std::endl;
-    printShapeInfo(rcvdEdgeNS2->Get(), TopAbs_EDGE);
-    std::cout << "shape type = " << rcvdEdgeNS2->Get().ShapeType() << std::endl;
-    mapOfShapes.Clear();
-    TopExp::MapShapes(rcvdEdgeNS2->Get(), TopAbs_EDGE, mapOfShapes);
-    i=1;
-    for (; i<=mapOfShapes.Extent(); i++){
-        TopoDS_Edge curEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
-        std::cout << "     edge in wire ->";
-        printShapeInfo(curEdge, TopAbs_EDGE);
-    }
+    //Handle(TNaming_NamedShape) rcvdEdgeNS2;
+    //SelectedEdgesLabel.FindChild(4, Standard_False).FindAttribute(TNaming_NamedShape::GetID(), rcvdEdgeNS2);
+    //std::cout << "re-Recovered edge data, after cut" << std::endl;
+    //printShapeInfo(rcvdEdgeNS2->Get(), TopAbs_EDGE);
+    //std::cout << "shape type = " << rcvdEdgeNS2->Get().ShapeType() << std::endl;
+    //mapOfShapes.Clear();
+    //TopExp::MapShapes(rcvdEdgeNS2->Get(), TopAbs_EDGE, mapOfShapes);
+    //i=1;
+    //for (; i<=mapOfShapes.Extent(); i++){
+        //TopoDS_Edge curEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
+        //std::cout << "     edge in wire ->";
+        //printShapeInfo(curEdge, TopAbs_EDGE);
+    //}
 
     // So, it's still a single edge. Should be two edges, since it got cut. Let's update the Data Framework and see what
     // happens
-
-    TDF_Label CutShape      = TDF_TagSource::NewChild(NewCutBoxLabel);
-    TDF_Label Modified      = TDF_TagSource::NewChild(NewCutBoxLabel); 
-    TDF_Label Deleted       = TDF_TagSource::NewChild(NewCutBoxLabel); 
-    TDF_Label Intersections = TDF_TagSource::NewChild(NewCutBoxLabel); 
-    TDF_Label NewFaces      = TDF_TagSource::NewChild(NewCutBoxLabel); 
-
-    // push CUT results in DF as modification of Box1
-    TNaming_Builder resultBuilder (NewCutBoxLabel);
-    resultBuilder.Modify (bx3MkCut.Shape1(), bx3MkCut.Shape());
-
-    // Select the 'cut shape', for some reason
-    TNaming_Selector ToolSelector2(CutShape);
-    ToolSelector2.Select(MKBOX3.Shape(), MKBOX3.Shape());
-
-    //push in the DF modified faces
-
-    TNaming_Builder ModBuilder2(Modified);
-    mapOfShapes.Clear();
-    TopExp::MapShapes(bx3MkCut.Shape1(), TopAbs_FACE, mapOfShapes);
-    i=1;
-    for (; i<=mapOfShapes.Extent(); i++){
-        const TopoDS_Shape& Root = mapOfShapes.FindKey(i);
-        const TopTools_ListOfShape& Shapes = bx3MkCut.Modified (Root);
-        TopTools_ListIteratorOfListOfShape ShapesIterator (Shapes);
-        for (;ShapesIterator.More (); ShapesIterator.Next ()) {
-            const TopoDS_Shape& newShape = ShapesIterator.Value ();
-            // TNaming_Evolution == MODIFY
-            if (!Root.IsSame (newShape))
-                ModBuilder2.Modify (Root,newShape );
-        }
-    }
-
-    //push in the DF deleted faces
-    TNaming_Builder DelBuilder2(Deleted);
-    mapOfShapes.Clear();
-    TopExp::MapShapes(bx3MkCut.Shape1(), TopAbs_FACE, mapOfShapes);
-    i=1;
-    for (; i<=mapOfShapes.Extent(); i++){
-        const TopoDS_Shape& Root = mapOfShapes.FindKey(i);
-        if (bx3MkCut.IsDeleted (Root))
-            DelBuilder2.Delete (Root);
-    }
-
-    // push in the DF section edges
-    TNaming_Builder IntersBuilder2(Intersections);
-    Handle(TopOpeBRepBuild_HBuilder) build = bx3MkCut.Builder();  
-    TopTools_ListIteratorOfListOfShape its = build->Section();
-    for (; its.More(); its.Next()) {
-        IntersBuilder2.Select(its.Value(),its.Value());
-    }
-
-    // push in the DF new faces added to the object:
-    TNaming_Builder newBuilder2 (NewFaces);
-    mapOfShapes.Clear();
-    TopExp::MapShapes(bx3MkCut.Shape2(), TopAbs_FACE, mapOfShapes);
-    i=1;
-    for (; i<=mapOfShapes.Extent(); i++){
-        const TopoDS_Shape& F = mapOfShapes.FindKey(i);
-        const TopTools_ListOfShape& modified = bx3MkCut.Modified(F);
-        if (!modified.IsEmpty()) {
-            TopTools_ListIteratorOfListOfShape itr(modified);
-            for (; itr.More (); itr.Next ()) {
-                const TopoDS_Shape& newShape = itr.Value();
-                Handle(TNaming_NamedShape) NS = TNaming_Tool::NamedShape(newShape, NewFaces);
-                if (NS.IsNull() || NS->Evolution() != TNaming_MODIFY) {
-                    // TNaming_Evolution == GENERATED
-                    newBuilder2.Generated(F, newShape); 	
-                } // if (NS.IsNul())...
-            } // for (; itr.More()...
-        } // if (!modified.IsEmpty()...
-    } //for (; ShapeExplorer.More()...
-
-    //Handle(TNaming_NamedShape) rcvdEdgeNS2;
-    SelectedEdgesLabel.FindChild(4, Standard_False).FindAttribute(TNaming_NamedShape::GetID(), rcvdEdgeNS2);
-    std::cout << std::endl << "re-Recovered edge data, after cut and after updating the Data Framework" << std::endl;
-    printShapeInfo(rcvdEdgeNS2->Get(), TopAbs_EDGE);
-    std::cout << "shape type = " << rcvdEdgeNS2->Get().ShapeType() << std::endl;
-    mapOfShapes.Clear();
-    TopExp::MapShapes(rcvdEdgeNS2->Get(), TopAbs_EDGE, mapOfShapes);
-    i=1;
-    for (; i<=mapOfShapes.Extent(); i++){
-        TopoDS_Edge curEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
-        std::cout << "     edge in wire ->";
-        printShapeInfo(curEdge, TopAbs_EDGE);
-    }
-
-
 
     //-----------------------------------------------------------
     // Bottom Matter

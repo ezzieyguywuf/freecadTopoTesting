@@ -70,7 +70,7 @@ void printShapeInfo(TopoDS_Shape shape, TopAbs_ShapeEnum which=TopAbs_FACE);
 void writeShapeInfo(TopoDS_Shape shape, std::ofstream&);
 void printDumpFile(TopoDS_Shape shape);
 void writeDumpFiles(TopoDS_Shape orig, TopoDS_Shape cut, TopoDS_Shape newBox);
-void cutBoxAndShowThings(TopoDS_Shape origBox);
+void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& LabelRoot);
 
 #include "ArchivedRunCases.cpp"
 
@@ -191,39 +191,82 @@ void writeDumpFiles(TopoDS_Shape orig, TopoDS_Shape cut, TopoDS_Shape newBox){
     newBoxFile.close();
 }
 
-void cutBoxAndShowThings(TopoDS_Shape origBox){
-    TopoDS_Shape cutBox, newBox;
-    gp_Pnt cut_loc;
-    gp_Dir cut_dir;
-    gp_Ax2 cut_ax2;
-    // create box to cut out and write it out.
-    cut_loc = gp_Pnt(7, 5, 30);
-    cut_dir = gp_Dir(0, 0, -1);
-    cut_ax2 = gp_Ax2(cut_loc, cut_dir);
-    cutBox = BRepPrimAPI_MakeBox(cut_ax2, 5., 5., 5.).Shape();
+void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& LabelRoot){
+    BRepAlgo_Cut MyCutter(BaseShape, CutShape);
+    TopoDS_Shape ResultShape = MyCutter.Shape();
 
-    // create new box by cutting out the second box from the first
-    BRepAlgoAPI_Cut builder(origBox, cutBox);
-    newBox = builder.Shape();
+    TDF_Label Tool      = TDF_TagSource::NewChild(LabelRoot);
+    TDF_Label Modified      = TDF_TagSource::NewChild(LabelRoot); 
+    TDF_Label Deleted       = TDF_TagSource::NewChild(LabelRoot); 
+    TDF_Label Intersections = TDF_TagSource::NewChild(LabelRoot); 
+    TDF_Label NewFaces      = TDF_TagSource::NewChild(LabelRoot); 
 
-    // print out Dump to files
-    writeDumpFiles(origBox, cutBox, newBox);
-    //printDumpFile(origBox);
-    //printDumpFile(cutBox);
-    //printDumpFile(newBox);
+    // push CUT results in DF as modification of Box1
+    TNaming_Builder resultBuilder (LabelRoot);
+    resultBuilder.Modify (BaseShape, ResultShape);
 
-    writeShapeInfos(origBox, cutBox, newBox);
-    //printShapeInfos(origBox, cutBox, newBox);
+    // Select the 'cut shape', for some reason
+    TNaming_Selector ToolSelector2(Tool);
+    ToolSelector2.Select(CutShape, CutShape);
+
+    //push in the DF modified faces
+
+    TNaming_Builder ModBuilder2(Modified);
+    TopTools_IndexedMapOfShape mapOfShapes;
+    TopExp::MapShapes(BaseShape, TopAbs_FACE, mapOfShapes);
+    int i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        const TopoDS_Shape& Root = mapOfShapes.FindKey(i);
+        const TopTools_ListOfShape& Shapes = MyCutter.Modified (Root);
+        TopTools_ListIteratorOfListOfShape ShapesIterator (Shapes);
+        for (;ShapesIterator.More (); ShapesIterator.Next ()) {
+            const TopoDS_Shape& newShape = ShapesIterator.Value ();
+            // TNaming_Evolution == MODIFY
+            if (!Root.IsSame (newShape))
+                ModBuilder2.Modify (Root,newShape );
+        }
+    }
+
+    //push in the DF deleted faces
+    TNaming_Builder DelBuilder2(Deleted);
+    mapOfShapes.Clear();
+    TopExp::MapShapes(BaseShape, TopAbs_FACE, mapOfShapes);
+    i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        const TopoDS_Shape& Root = mapOfShapes.FindKey(i);
+        if (MyCutter.IsDeleted (Root))
+            DelBuilder2.Delete (Root);
+    }
+
+    // push in the DF section edges
+    TNaming_Builder IntersBuilder2(Intersections);
+    Handle(TopOpeBRepBuild_HBuilder) build = MyCutter.Builder();  
+    TopTools_ListIteratorOfListOfShape its = build->Section();
+    for (; its.More(); its.Next()) {
+        IntersBuilder2.Select(its.Value(),its.Value());
+    }
+
+    // push in the DF new faces added to the object:
+    TNaming_Builder newBuilder2 (NewFaces);
+    mapOfShapes.Clear();
+    TopExp::MapShapes(MyCutter.Shape2(), TopAbs_FACE, mapOfShapes);
+    i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        const TopoDS_Shape& F = mapOfShapes.FindKey(i);
+        const TopTools_ListOfShape& modified = MyCutter.Modified(F);
+        if (!modified.IsEmpty()) {
+            TopTools_ListIteratorOfListOfShape itr(modified);
+            for (; itr.More (); itr.Next ()) {
+                const TopoDS_Shape& newShape = itr.Value();
+                Handle(TNaming_NamedShape) NS = TNaming_Tool::NamedShape(newShape, NewFaces);
+                if (NS.IsNull() || NS->Evolution() != TNaming_MODIFY) {
+                    // TNaming_Evolution == GENERATED
+                    newBuilder2.Generated(F, newShape); 	
+                } // if (NS.IsNul())...
+            } // for (; itr.More()...
+        } // if (!modified.IsEmpty()...
+    } //for (; ShapeExplorer.More()...
 }
-
-
-//Standard_OStream& TNaming_NamedShape::Dump
-//(Standard_OStream& anOS) const
-//{
-    //anOS << "Testing, one two" << std::endl;
-    //return anOS;
-//}
-
 
 int main(){
     //runCase1();
