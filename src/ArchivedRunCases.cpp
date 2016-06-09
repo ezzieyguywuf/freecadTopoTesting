@@ -899,77 +899,77 @@ void runCase4(){
     //-------------------------------------------------------------
 
     // Move it a bit.
-    gp_Pnt cut_loc = gp_Pnt(25, -5, -5);
-    gp_Dir cut_dir = gp_Dir(0, 0, 1);
-    gp_Ax2 cut_ax2 = gp_Ax2(cut_loc, cut_dir);
-    BRepPrimAPI_MakeBox MKBOX3(cut_ax2, 20., 20., 150);
+    //gp_Pnt cut_loc = gp_Pnt(25, -5, -5);
+    //gp_Dir cut_dir = gp_Dir(0, 0, 1);
+    //gp_Ax2 cut_ax2 = gp_Ax2(cut_loc, cut_dir);
+    //BRepPrimAPI_MakeBox MKBOX3(cut_ax2, 20., 20., 150);
 
-    TopoDS_Shape myBox3 = MKBOX3.Shape();
-    std::cout << "Box3" << std::endl;
+    //TopoDS_Shape myBox3 = MKBOX3.Shape();
+    //std::cout << "Box3" << std::endl;
 
-    // New nodes on root of the Data Frame
-    TDF_Label Box3Label = aLabel.FindChild(6);
-    // The following is wrong. See comment below.
-    // TDF_Label NewCutBoxLabel = TDF_TagSource::NewChild(aLabel);
-    TDF_Label NewCutBoxLabel = aLabel.FindChild(7);
+    //// New nodes on root of the Data Frame
+    //TDF_Label Box3Label = aLabel.FindChild(6);
+    //// The following is wrong. See comment below.
+    //// TDF_Label NewCutBoxLabel = TDF_TagSource::NewChild(aLabel);
+    //TDF_Label NewCutBoxLabel = aLabel.FindChild(7);
 
     // Children nodes, to hold faces. Note the use of TDF_TagSource. You must label ALL children labels using
     // TDF_TagSource, or NONE.
-    TDF_Label bx3TopLbl = TDF_TagSource::NewChild(Box3Label);
-    TDF_Label bx3BotLbl = TDF_TagSource::NewChild(Box3Label);
-    TDF_Label bx3FrtLbl = TDF_TagSource::NewChild(Box3Label);
-    TDF_Label bx3BckLbl = TDF_TagSource::NewChild(Box3Label);
-    TDF_Label bx3LftLbl = TDF_TagSource::NewChild(Box3Label);
-    TDF_Label bx3RgtLbl = TDF_TagSource::NewChild(Box3Label);
-    std::cout << "Tag for bx3TopLbl = " << bx3TopLbl.Tag() << std::endl;
-    std::cout << "Tag for bx3BckLbl = " << bx3BckLbl.Tag() << std::endl;
+    //TDF_Label bx3TopLbl = TDF_TagSource::NewChild(Box3Label);
+    //TDF_Label bx3BotLbl = TDF_TagSource::NewChild(Box3Label);
+    //TDF_Label bx3FrtLbl = TDF_TagSource::NewChild(Box3Label);
+    //TDF_Label bx3BckLbl = TDF_TagSource::NewChild(Box3Label);
+    //TDF_Label bx3LftLbl = TDF_TagSource::NewChild(Box3Label);
+    //TDF_Label bx3RgtLbl = TDF_TagSource::NewChild(Box3Label);
+    //std::cout << "Tag for bx3TopLbl = " << bx3TopLbl.Tag() << std::endl;
+    //std::cout << "Tag for bx3BckLbl = " << bx3BckLbl.Tag() << std::endl;
 
-    TDF_Label newCutTopLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
-    TDF_Label newCutBotLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
-    TDF_Label newCutFrtLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
-    TDF_Label newCutBckLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
-    TDF_Label newCutLftLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
-    TDF_Label newCutRgtLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+    //TDF_Label newCutTopLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+    //TDF_Label newCutBotLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+    //TDF_Label newCutFrtLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+    //TDF_Label newCutBckLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+    //TDF_Label newCutLftLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
+    //TDF_Label newCutRgtLbl = TDF_TagSource::NewChild(NewCutBoxLabel);
 
-    TNaming_Builder myBuilder(Box3Label);
-    myBuilder.Generated(MKBOX3.Shape());
+    //TNaming_Builder myBuilder(Box3Label);
+    //myBuilder.Generated(MKBOX3.Shape());
 
-    TNaming_Builder myBuilder1(bx3TopLbl);
-    myBuilder1.Generated(MKBOX3.TopFace());
+    //TNaming_Builder myBuilder1(bx3TopLbl);
+    //myBuilder1.Generated(MKBOX3.TopFace());
 
-    TNaming_Builder myBuilder2(bx3BotLbl);
-    myBuilder2.Generated(MKBOX3.BottomFace());
+    //TNaming_Builder myBuilder2(bx3BotLbl);
+    //myBuilder2.Generated(MKBOX3.BottomFace());
 
-    TNaming_Builder myBuilder3(bx3FrtLbl);
-    myBuilder3.Generated(MKBOX3.FrontFace());
+    //TNaming_Builder myBuilder3(bx3FrtLbl);
+    //myBuilder3.Generated(MKBOX3.FrontFace());
 
-    TNaming_Builder myBuilder4(bx3BckLbl);
-    myBuilder4.Generated(MKBOX3.BackFace());
+    //TNaming_Builder myBuilder4(bx3BckLbl);
+    //myBuilder4.Generated(MKBOX3.BackFace());
 
-    TNaming_Builder myBuilder5(bx3LftLbl);
-    myBuilder5.Generated(MKBOX3.LeftFace());
+    //TNaming_Builder myBuilder5(bx3LftLbl);
+    //myBuilder5.Generated(MKBOX3.LeftFace());
 
-    TNaming_Builder myBuilder6(bx3RgtLbl);
-    myBuilder6.Generated(MKBOX3.RightFace());
+    //TNaming_Builder myBuilder6(bx3RgtLbl);
+    //myBuilder6.Generated(MKBOX3.RightFace());
 
-    // recover one of the selected edges
-    Handle(TNaming_NamedShape) rcvdEdgeNS;
-    SelectedEdgesLabel.FindChild(4, Standard_False).FindAttribute(TNaming_NamedShape::GetID(), rcvdEdgeNS);
-    std::cout << "Recovered edge data" << std::endl;
-    printShapeInfo(rcvdEdgeNS->Get(), TopAbs_EDGE);
-    std::cout << "shape type = " << rcvdEdgeNS->Get().ShapeType() << std::endl;
-    TopTools_IndexedMapOfShape mapOfShapes;
-    TopExp::MapShapes(rcvdEdgeNS->Get(), TopAbs_EDGE, mapOfShapes);
-    i=1;
-    for (; i<=mapOfShapes.Extent(); i++){
-        TopoDS_Edge curEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
-        std::cout << "     edge in wire ->";
-        printShapeInfo(curEdge, TopAbs_EDGE);
-    }
+    //// recover one of the selected edges
+    //Handle(TNaming_NamedShape) rcvdEdgeNS;
+    //SelectedEdgesLabel.FindChild(4, Standard_False).FindAttribute(TNaming_NamedShape::GetID(), rcvdEdgeNS);
+    //std::cout << "Recovered edge data" << std::endl;
+    //printShapeInfo(rcvdEdgeNS->Get(), TopAbs_EDGE);
+    //std::cout << "shape type = " << rcvdEdgeNS->Get().ShapeType() << std::endl;
+    //TopTools_IndexedMapOfShape mapOfShapes;
+    //TopExp::MapShapes(rcvdEdgeNS->Get(), TopAbs_EDGE, mapOfShapes);
+    //i=1;
+    //for (; i<=mapOfShapes.Extent(); i++){
+        //TopoDS_Edge curEdge = TopoDS::Edge(mapOfShapes.FindKey(i));
+        //std::cout << "     edge in wire ->";
+        //printShapeInfo(curEdge, TopAbs_EDGE);
+    //}
 
-    //// Using one of the references from the occ demo, cut out box3
-    //BRepAlgo_Cut bx3MkCut (Result_2, MKBOX3.Shape());
-    MakeTrackedCut(Result_2, MKBOX3.Shape(), NewCutBoxLabel);
+    ////// Using one of the references from the occ demo, cut out box3
+    ////BRepAlgo_Cut bx3MkCut (Result_2, MKBOX3.Shape());
+    //MakeTrackedCut(Result_2, MKBOX3.Shape(), NewCutBoxLabel);
     //// write it out so we can make sure it looks right. it does.
     //BRepTools::Write(bx3MkCut.Shape(), "myBox3.brep");
 
@@ -1007,15 +1007,15 @@ void runCase4(){
     // Bottom Matter
     //----------------------------------------------------------
 
-    Handle(TNaming_NamedShape) origBox;
-    Box1Label.FindAttribute(TNaming_NamedShape::GetID(), origBox);
+    //Handle(TNaming_NamedShape) origBox;
+    //Box1Label.FindAttribute(TNaming_NamedShape::GetID(), origBox);
     //std::cout << "About to print out recovered box, I think" << std::endl;
     //printShapeInfo(origBox->Get());
     //std::cout << "About to print out edges from recovered box, I think" << std::endl;
     //printShapeInfo(origBox->Get(), TopAbs_EDGE);
 
-    Handle(TNaming_NamedShape) filletedBox;
-    FilletLabel.FindAttribute(TNaming_NamedShape::GetID(), filletedBox);
+    //Handle(TNaming_NamedShape) filletedBox;
+    //FilletLabel.FindAttribute(TNaming_NamedShape::GetID(), filletedBox);
     //std::cout << "About to print out faces from recovered filleted box" << std::endl;
     //printShapeInfo(filletedBox->Get());
     //std::cout << "About to print out edges from recovered filleted box, I think" << std::endl;
@@ -1073,5 +1073,5 @@ void runCase4(){
     //aLabel.ExtendedDump(std::cout, myFilter, myMap);
     //aLabel.Dump(std::cout);
     //TDF_Tool::ExtendedDeepDump(std::cout, DF, myFilter);
-    //TDF_Tool::DeepDump(std::cout, DF);
+    TDF_Tool::DeepDump(std::cout, DF);
 }

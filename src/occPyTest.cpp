@@ -72,8 +72,8 @@ void printDumpFile(TopoDS_Shape shape);
 void writeDumpFiles(TopoDS_Shape orig, TopoDS_Shape cut, TopoDS_Shape newBox);
 void AddTextToLabel(TDF_Label& Label, char* str);
 void AddTextToLabel(TDF_Label& Label, std::string Text);
-void MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
-                    const Standard_Real dz, const TDF_Label LabelRootPtr);
+TopoDS_Shape  MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
+                             const Standard_Real dz, const TDF_Label LabelRootPtr);
 void MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot);
 void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& LabelRoot);
 void MakeTrackedSelection(TopoDS_Shape BaseShape, TopoDS_Shape SelectedShape, TDF_Label& LabelRoot);
@@ -211,8 +211,8 @@ void AddTextToLabel(TDF_Label& Label, std::string Text){
     AddTextToLabel(Label, Text.c_str());
 }
 
-void MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
-                    const Standard_Real dz, const TDF_Label LabelRoot){
+TopoDS_Shape MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
+                            const Standard_Real dz, const TDF_Label LabelRoot){
     //TDF_Label LabelRoot = *LabelRootPtr;
     BRepPrimAPI_MakeBox MakeBox( dx, dy, dz); 
     TopoDS_Shape GendBox = MakeBox.Shape();
@@ -255,6 +255,8 @@ void MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
     TopoDS_Face Back1Face = MakeBox.BackFace ();
     TNaming_Builder Back1FaceIns (Back1); 
     Back1FaceIns.Generated (Back1Face); 
+
+    return GendBox;
 }
 
 void MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot){
@@ -273,22 +275,22 @@ void MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label&
 }
 
 void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& LabelRoot){
-    BRepAlgo_Cut MyCutter(BaseShape, CutShape);
-    TopoDS_Shape ResultShape = MyCutter.Shape();
-
-    TDF_Label Tool      = TDF_TagSource::NewChild(LabelRoot);
+    TDF_Label Tool          = TDF_TagSource::NewChild(LabelRoot);
     TDF_Label Modified      = TDF_TagSource::NewChild(LabelRoot); 
     TDF_Label Deleted       = TDF_TagSource::NewChild(LabelRoot); 
     TDF_Label Intersections = TDF_TagSource::NewChild(LabelRoot); 
     TDF_Label NewFaces      = TDF_TagSource::NewChild(LabelRoot); 
 
+     //Select the 'cut shape', for some reason
+    TNaming_Selector ToolSelector2(Tool);
+    ToolSelector2.Select(CutShape, CutShape);
+
+    BRepAlgo_Cut MyCutter(BaseShape, CutShape);
+    TopoDS_Shape ResultShape = MyCutter.Shape();
+
     // push CUT results in DF as modification of Box1
     TNaming_Builder resultBuilder (LabelRoot);
     resultBuilder.Modify (BaseShape, ResultShape);
-
-    // Select the 'cut shape', for some reason
-    TNaming_Selector ToolSelector2(Tool);
-    ToolSelector2.Select(CutShape, CutShape);
 
     //push in the DF modified faces
 
@@ -366,8 +368,8 @@ void MakeTrackedSelection(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Sel
 }
 
 void MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges, TDF_Label& FilletLabelRoot){
-    // First, SELECT each edge that we'll fillet, for future reference
-    MakeTrackedSelection(BaseShape, Edges, FilletLabelRoot);
+    //// First, SELECT each edge that we'll fillet, for future reference
+    //MakeTrackedSelection(BaseShape, Edges, FilletLabelRoot);
 
     // Now, Perform the Fillet operation
     BRepFilletAPI_MakeFillet MakeFillet(BaseShape);// fillet's algo
@@ -476,11 +478,47 @@ void runCase5(){
     std::cout << "Running case 5" << std::endl;
     
     // Create the Data Framework and Root node
-    Handle(TDF_Data) DF = new TDF_Data();
-    const TDF_Label MyRoot = DF->Root();
-    TDF_Label Box1Label = TDF_TagSource::NewChild(MyRoot);
-    //TNaming_Builder GeneratedBoxBuilder(myTest);
-    MakeTrackedBox(100., 100., 100., Box1Label);
+    Handle(TDF_Data) DF          = new TDF_Data();
+    const TDF_Label MyRoot       = DF->Root();
+    TDF_Label Box1Label          = TDF_TagSource::NewChild(MyRoot); // 1
+    TDF_Label Box2Label          = TDF_TagSource::NewChild(MyRoot); // 2
+    TDF_Label SelEdgesLabel      = TDF_TagSource::NewChild(MyRoot); // 3
+    TDF_Label FilletedBox1Label  = TDF_TagSource::NewChild(MyRoot); // 4
+    TDF_Label Box1CutLabel       = TDF_TagSource::NewChild(MyRoot); // 5
+
+    // Create both boxes
+    // TODO: Explore why Box2 here is not translated - is this safe at all, or should we
+    // always pull it from the tree?
+    TopoDS_Shape Box1 = MakeTrackedBox(100., 100., 100., Box1Label);
+    TopoDS_Shape Box2 = MakeTrackedBox(150., 150., 150., Box2Label);
+
+    // Move the second box
+    gp_Vec vec1(gp_Pnt(0.,0.,0.),gp_Pnt(50.,50.,20.));
+    gp_Trsf Transformation;
+    Transformation.SetTranslation(vec1);
+    MakeTrackedTransform(Box2, Transformation, Box2Label);
+
+    // Select the edges we're going to fillet
+
+    // Is there a better way to keep track of which child is which Face?
+    Handle(TNaming_NamedShape) Box1TopFaceNS;
+    Box1Label.FindChild(1).FindAttribute(TNaming_NamedShape::GetID(), Box1TopFaceNS);
+    const TopoDS_Shape& top1face  = TNaming_Tool::GetShape(Box1TopFaceNS);
+    TopTools_IndexedMapOfShape mapOfEdges;
+    TopExp::MapShapes(top1face, TopAbs_EDGE, mapOfEdges);
+    MakeTrackedSelection(Box1, mapOfEdges, SelEdgesLabel);
+
+    // Make the fillet operation
+    MakeTrackedFillets(Box1, mapOfEdges, FilletedBox1Label);
+
+    // make the cut operation. Note, if you use Box2 from above it won't be translated, so
+    // pull it from the tree instead
+    Handle(TNaming_NamedShape) Box2NS;
+    Box2Label.FindAttribute(TNaming_NamedShape::GetID(), Box2NS);
+    TopoDS_Shape CutTool = Box2NS->Get();
+    MakeTrackedCut(Box1, CutTool, Box1CutLabel);
+
+    TDF_Tool::DeepDump(std::cout, DF);
 }
 
 int main(){
