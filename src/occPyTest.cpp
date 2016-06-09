@@ -74,7 +74,7 @@ void AddTextToLabel(TDF_Label& Label, char* str);
 void AddTextToLabel(TDF_Label& Label, std::string Text);
 TopoDS_Shape  MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
                              const Standard_Real dz, const TDF_Label LabelRootPtr);
-void MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot);
+TopoDS_Shape MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot);
 void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& LabelRoot);
 void MakeTrackedSelection(TopoDS_Shape BaseShape, TopoDS_Shape SelectedShape, TDF_Label& LabelRoot);
 void MakeTrackedSelection(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Selections, TDF_Label& LabelRoot);
@@ -259,7 +259,7 @@ TopoDS_Shape MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
     return GendBox;
 }
 
-void MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot){
+TopoDS_Shape MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot){
     TopLoc_Location location(Transformation);
     TDF_LabelMap scope;
     TDF_ChildIterator itchild;
@@ -272,6 +272,11 @@ void MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label&
     TDF_MapIteratorOfLabelMap it(scope);
     for (;it.More();it.Next()) 
         TNaming::Displace(it.Key(), location, Standard_True);//with oldshapes
+
+    // Get back the translated box to return
+    Handle(TNaming_NamedShape) MovedBoxNS;
+    LabelRoot.FindAttribute(TNaming_NamedShape::GetID(), MovedBoxNS);
+    return MovedBoxNS->Get();
 }
 
 void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& LabelRoot){
@@ -487,8 +492,6 @@ void runCase5(){
     TDF_Label Box1CutLabel       = TDF_TagSource::NewChild(MyRoot); // 5
 
     // Create both boxes
-    // TODO: Explore why Box2 here is not translated - is this safe at all, or should we
-    // always pull it from the tree?
     TopoDS_Shape Box1 = MakeTrackedBox(100., 100., 100., Box1Label);
     TopoDS_Shape Box2 = MakeTrackedBox(150., 150., 150., Box2Label);
 
@@ -496,7 +499,7 @@ void runCase5(){
     gp_Vec vec1(gp_Pnt(0.,0.,0.),gp_Pnt(50.,50.,20.));
     gp_Trsf Transformation;
     Transformation.SetTranslation(vec1);
-    MakeTrackedTransform(Box2, Transformation, Box2Label);
+    Box2 = MakeTrackedTransform(Box2, Transformation, Box2Label);
 
     // Select the edges we're going to fillet
 
@@ -511,12 +514,8 @@ void runCase5(){
     // Make the fillet operation
     MakeTrackedFillets(Box1, mapOfEdges, FilletedBox1Label);
 
-    // make the cut operation. Note, if you use Box2 from above it won't be translated, so
-    // pull it from the tree instead
-    Handle(TNaming_NamedShape) Box2NS;
-    Box2Label.FindAttribute(TNaming_NamedShape::GetID(), Box2NS);
-    TopoDS_Shape CutTool = Box2NS->Get();
-    MakeTrackedCut(Box1, CutTool, Box1CutLabel);
+    // make the cut operation.
+    MakeTrackedCut(Box1, Box2, Box1CutLabel);
 
     TDF_Tool::DeepDump(std::cout, DF);
 }
