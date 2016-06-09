@@ -70,7 +70,15 @@ void printShapeInfo(TopoDS_Shape shape, TopAbs_ShapeEnum which=TopAbs_FACE);
 void writeShapeInfo(TopoDS_Shape shape, std::ofstream&);
 void printDumpFile(TopoDS_Shape shape);
 void writeDumpFiles(TopoDS_Shape orig, TopoDS_Shape cut, TopoDS_Shape newBox);
+void AddTextToLabel(TDF_Label& Label, char* str);
+void AddTextToLabel(TDF_Label& Label, std::string Text);
+void MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
+                    const Standard_Real dz, const TDF_Label LabelRootPtr);
+void MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot);
 void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& LabelRoot);
+void MakeTrackedSelection(TopoDS_Shape BaseShape, TopoDS_Shape SelectedShape, TDF_Label& LabelRoot);
+void MakeTrackedSelection(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Selections, TDF_Label& LabelRoot);
+void MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges, TDF_Label& FilletLabelRoot);
 
 #include "ArchivedRunCases.cpp"
 
@@ -191,6 +199,79 @@ void writeDumpFiles(TopoDS_Shape orig, TopoDS_Shape cut, TopoDS_Shape newBox){
     newBoxFile.close();
 }
 
+void AddTextToLabel(TDF_Label& Label, char const *str){
+    Handle(TDataStd_AsciiString) nameAttribute;
+    TCollection_AsciiString myName;
+    myName = str;
+    nameAttribute = new TDataStd_AsciiString();
+    nameAttribute->Set(myName);
+    Label.AddAttribute(nameAttribute);
+}
+void AddTextToLabel(TDF_Label& Label, std::string Text){
+    AddTextToLabel(Label, Text.c_str());
+}
+
+void MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
+                    const Standard_Real dz, const TDF_Label LabelRoot){
+    //TDF_Label LabelRoot = *LabelRootPtr;
+    BRepPrimAPI_MakeBox MakeBox( dx, dy, dz); 
+    TopoDS_Shape GendBox = MakeBox.Shape();
+
+    // create the labels we'll need
+    TDF_Label Top1      = TDF_TagSource::NewChild(LabelRoot);
+    TDF_Label Bottom1   = TDF_TagSource::NewChild(LabelRoot);
+    TDF_Label Right1    = TDF_TagSource::NewChild(LabelRoot);
+    TDF_Label Left1     = TDF_TagSource::NewChild(LabelRoot);
+    TDF_Label Front1    = TDF_TagSource::NewChild(LabelRoot);
+    TDF_Label Back1     = TDF_TagSource::NewChild(LabelRoot);
+
+    // add the generated box to the LabelRoot
+    TNaming_Builder GeneratedBoxBuilder(LabelRoot);
+    //GeneratedBoxBuilder.Generated(GendBox);
+    //std::ostringstream text;
+    //text << "Box, dx=" << dx << ", dy=" << dy << " dz=" << dz << std::endl;
+    //AddTextToLabel(LabelRoot, "Box created");
+
+    //TNaming_Builder Top1FaceIns (Top1);
+    //TopoDS_Face Top1Face = MakeBox.TopFace ();
+    //Top1FaceIns.Generated (Top1Face);  
+
+    //TopoDS_Face Bottom1Face = MakeBox.BottomFace ();
+    //TNaming_Builder Bottom1FaceIns (Bottom1); 
+    //Bottom1FaceIns.Generated (Bottom1Face);
+
+    //TopoDS_Face Right1Face = MakeBox.RightFace ();
+    //TNaming_Builder Right1FaceIns (Right1); 
+    //Right1FaceIns.Generated (Right1Face); 
+
+    //TopoDS_Face Left1Face = MakeBox.LeftFace ();
+    //TNaming_Builder Left1FaceIns (Left1); 
+    //Left1FaceIns.Generated (Left1Face); 
+
+    //TopoDS_Face Front1Face = MakeBox.FrontFace ();
+    //TNaming_Builder Front1FaceIns (Front1);
+    //Front1FaceIns.Generated (Front1Face); 
+
+    //TopoDS_Face Back1Face = MakeBox.BackFace ();
+    //TNaming_Builder Back1FaceIns (Back1); 
+    //Back1FaceIns.Generated (Back1Face); 
+}
+
+void MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot){
+    TopLoc_Location location(Transformation);
+    TDF_LabelMap scope;
+    TDF_ChildIterator itchild;
+    for (itchild.Initialize(LabelRoot, Standard_True); itchild.More();itchild.Next()) {
+        if (itchild.Value().IsAttribute(TNaming_NamedShape::GetID()))
+            scope.Add(itchild.Value());
+    }
+    if (LabelRoot.IsAttribute(TNaming_NamedShape::GetID()))
+        scope.Add(LabelRoot);
+    TDF_MapIteratorOfLabelMap it(scope);
+    for (;it.More();it.Next()) 
+        TNaming::Displace(it.Key(), location, Standard_True);//with oldshapes
+}
+
 void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& LabelRoot){
     BRepAlgo_Cut MyCutter(BaseShape, CutShape);
     TopoDS_Shape ResultShape = MyCutter.Shape();
@@ -267,11 +348,145 @@ void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& La
         } // if (!modified.IsEmpty()...
     } //for (; ShapeExplorer.More()...
 }
+void MakeTrackedSelection(TopoDS_Shape BaseShape, TopoDS_Shape SelectedShape, TDF_Label& LabelRoot){
+    const TDF_Label& SelEdge  = TDF_TagSource::NewChild(LabelRoot);
+    TNaming_Selector Selector(SelEdge);
+    Selector.Select(SelectedShape, BaseShape);
+}
+
+void MakeTrackedSelection(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Selections, TDF_Label& LabelRoot){
+    Standard_Integer i=1;
+    for(; i<= Selections.Extent(); i++){
+        const TopoDS_Shape& Shape = Selections(i);
+        const TDF_Label& SelEdge  = TDF_TagSource::NewChild(LabelRoot);
+        TNaming_Selector Selector(SelEdge);
+
+        Selector.Select(Shape, BaseShape);
+    }
+}
+
+void MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges, TDF_Label& FilletLabelRoot){
+    // First, SELECT each edge that we'll fillet, for future reference
+    MakeTrackedSelection(BaseShape, Edges, FilletLabelRoot);
+
+    // Now, Perform the Fillet operation
+    BRepFilletAPI_MakeFillet MakeFillet(BaseShape);// fillet's algo
+
+    Standard_Integer i=1;
+    for(; i<= Edges.Extent(); i++){
+        const TopoDS_Edge& E = TopoDS::Edge(Edges(i));
+        MakeFillet.Add(5., 5., E);
+    }
+    MakeFillet.Build();
+
+    if(!MakeFillet.IsDone()){
+        std::cout << "fillet failed, bailing out" << std::endl;
+        return; //Algorithm failed
+    }
+
+    TopoDS_Shape ResultShape = MakeFillet.Shape();
+
+    // Finally, store all the necessary information
+
+    TDF_Label DeletedFaces      = TDF_TagSource::NewChild(FilletLabelRoot);
+    TDF_Label ModifiedFaces     = TDF_TagSource::NewChild(FilletLabelRoot);
+    TDF_Label FacesFromEdges    = TDF_TagSource::NewChild(FilletLabelRoot);
+    TDF_Label FacesFromVertices = TDF_TagSource::NewChild(FilletLabelRoot);
+
+    // TNaming_Evolution == MODIFY
+    TNaming_Builder ResultBuilder(FilletLabelRoot);
+    ResultBuilder.Modify(BaseShape, ResultShape);
+    AddTextToLabel(FilletLabelRoot, "FilletLabelRoot");
+
+    //New faces generated from edges
+    TNaming_Builder FaceFromEdgeBuilder(FacesFromEdges);  
+    TopTools_IndexedMapOfShape mapOfEdges;
+    TopExp::MapShapes(BaseShape, TopAbs_EDGE, mapOfEdges);
+    i=1;
+    for (; i <= mapOfEdges.Extent(); i++){
+        const TopoDS_Shape& CurrentEdge = mapOfEdges.FindKey(i);
+        // I gues the MakeFillet algo takes an edge and sweeps it or something
+        const TopTools_ListOfShape& Shapes = MakeFillet.Generated (CurrentEdge);
+        TopTools_ListIteratorOfListOfShape ShapesIterator (Shapes);
+        for (;ShapesIterator.More (); ShapesIterator.Next ()) {
+            const TopoDS_Shape& newShape = ShapesIterator.Value ();
+            // I guess the edge also get's re-generated?
+            if (!CurrentEdge.IsSame (newShape)){
+                FaceFromEdgeBuilder.Generated (CurrentEdge, newShape );
+                std::cout << "Found a generated Shape, i = " << i << std::endl;
+                printShapeInfo(CurrentEdge);
+            }
+        }
+    }
+
+    //Faces of the initial shape modified by MakeFillet
+    TNaming_Builder ModFacesBuilder(ModifiedFaces);
+    TopTools_IndexedMapOfShape mapOfFaces;
+    TopExp::MapShapes(BaseShape, TopAbs_FACE, mapOfFaces);
+    i=1;
+    for (; i <= mapOfFaces.Extent(); i++){
+        const TopoDS_Shape& CurrentFace = mapOfFaces.FindKey(i);
+        const TopTools_ListOfShape& Shapes = MakeFillet.Modified (CurrentFace);
+        TopTools_ListIteratorOfListOfShape ShapesIterator (Shapes);
+        for (;ShapesIterator.More (); ShapesIterator.Next ()) {
+            const TopoDS_Shape& newShape = ShapesIterator.Value ();
+            // Not sure how they could be the same...
+            if (!CurrentFace.IsSame (newShape))
+                ModFacesBuilder.Modify (CurrentFace,newShape );
+                std::cout << "Found Modified Shape, i= " << i << std::endl;
+                printShapeInfo(CurrentFace);
+        }
+    }
+
+    //Deleted faces of the initial shape
+    TNaming_Builder DelFacesBuilder(DeletedFaces);
+    TopExp::MapShapes(BaseShape, TopAbs_FACE, mapOfFaces);
+    i=1;
+    for (; i<=mapOfFaces.Extent(); i++){
+        const TopoDS_Shape& CurrentFace = mapOfFaces.FindKey(i);
+        // TNaming_Evolution == DELETE
+        if (MakeFillet.IsDeleted (CurrentFace)){
+            DelFacesBuilder.Delete(CurrentFace);
+            std::cout << "Found Deleted Shape, i= " << i << std::endl;
+            printShapeInfo(CurrentFace);
+        }
+    }
+
+    //New faces generated from vertices
+    TNaming_Builder FaceFromVertexBuilder(FacesFromVertices);
+    TopTools_IndexedMapOfShape mapOfVertexes;
+    TopExp::MapShapes(BaseShape, TopAbs_VERTEX, mapOfVertexes);
+    i=1;
+    for (; i<=mapOfVertexes.Extent(); i++){
+        const TopoDS_Shape& CurrentVertex = mapOfVertexes.FindKey(i);
+        const TopTools_ListOfShape& Shapes = MakeFillet.Generated (CurrentVertex);
+        TopTools_ListIteratorOfListOfShape ShapesIterator (Shapes);
+        for (;ShapesIterator.More (); ShapesIterator.Next ()) {
+            const TopoDS_Shape& newShape = ShapesIterator.Value ();
+            // TNaming_Evolution == GENERATED
+            if (!CurrentVertex.IsSame (newShape)){
+                FaceFromVertexBuilder.Generated (CurrentVertex, newShape );
+                std::cout << "Found Shape generated by Vertex, i = " << i << std::endl;
+            }
+        }
+    }
+}
+
+void runCase5(){
+    std::cout << "Running case 5" << std::endl;
+    
+    // Create the Data Framework and Root node
+    Handle(TDF_Data) DF = new TDF_Data();
+    const TDF_Label MyRoot = DF->Root();
+    //TDF_Label* myRootPtr = &MyRoot;
+    MakeTrackedBox(100., 100., 100., MyRoot);
+}
 
 int main(){
     //runCase1();
     //runCase2();
     //runCase3();
-    runCase4();
+    //runCase4();
+    runCase5();
     return 0;
 }
