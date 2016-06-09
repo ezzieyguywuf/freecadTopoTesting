@@ -227,34 +227,34 @@ void MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
 
     // add the generated box to the LabelRoot
     TNaming_Builder GeneratedBoxBuilder(LabelRoot);
-    //GeneratedBoxBuilder.Generated(GendBox);
+    GeneratedBoxBuilder.Generated(GendBox);
     //std::ostringstream text;
     //text << "Box, dx=" << dx << ", dy=" << dy << " dz=" << dz << std::endl;
     //AddTextToLabel(LabelRoot, "Box created");
 
-    //TNaming_Builder Top1FaceIns (Top1);
-    //TopoDS_Face Top1Face = MakeBox.TopFace ();
-    //Top1FaceIns.Generated (Top1Face);  
+    TNaming_Builder Top1FaceIns (Top1);
+    TopoDS_Face Top1Face = MakeBox.TopFace ();
+    Top1FaceIns.Generated (Top1Face);  
 
-    //TopoDS_Face Bottom1Face = MakeBox.BottomFace ();
-    //TNaming_Builder Bottom1FaceIns (Bottom1); 
-    //Bottom1FaceIns.Generated (Bottom1Face);
+    TopoDS_Face Bottom1Face = MakeBox.BottomFace ();
+    TNaming_Builder Bottom1FaceIns (Bottom1); 
+    Bottom1FaceIns.Generated (Bottom1Face);
 
-    //TopoDS_Face Right1Face = MakeBox.RightFace ();
-    //TNaming_Builder Right1FaceIns (Right1); 
-    //Right1FaceIns.Generated (Right1Face); 
+    TopoDS_Face Right1Face = MakeBox.RightFace ();
+    TNaming_Builder Right1FaceIns (Right1); 
+    Right1FaceIns.Generated (Right1Face); 
 
-    //TopoDS_Face Left1Face = MakeBox.LeftFace ();
-    //TNaming_Builder Left1FaceIns (Left1); 
-    //Left1FaceIns.Generated (Left1Face); 
+    TopoDS_Face Left1Face = MakeBox.LeftFace ();
+    TNaming_Builder Left1FaceIns (Left1); 
+    Left1FaceIns.Generated (Left1Face); 
 
-    //TopoDS_Face Front1Face = MakeBox.FrontFace ();
-    //TNaming_Builder Front1FaceIns (Front1);
-    //Front1FaceIns.Generated (Front1Face); 
+    TopoDS_Face Front1Face = MakeBox.FrontFace ();
+    TNaming_Builder Front1FaceIns (Front1);
+    Front1FaceIns.Generated (Front1Face); 
 
-    //TopoDS_Face Back1Face = MakeBox.BackFace ();
-    //TNaming_Builder Back1FaceIns (Back1); 
-    //Back1FaceIns.Generated (Back1Face); 
+    TopoDS_Face Back1Face = MakeBox.BackFace ();
+    TNaming_Builder Back1FaceIns (Back1); 
+    Back1FaceIns.Generated (Back1Face); 
 }
 
 void MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot){
@@ -478,8 +478,9 @@ void runCase5(){
     // Create the Data Framework and Root node
     Handle(TDF_Data) DF = new TDF_Data();
     const TDF_Label MyRoot = DF->Root();
-    //TDF_Label* myRootPtr = &MyRoot;
-    MakeTrackedBox(100., 100., 100., MyRoot);
+    TDF_Label Box1Label = TDF_TagSource::NewChild(MyRoot);
+    //TNaming_Builder GeneratedBoxBuilder(myTest);
+    MakeTrackedBox(100., 100., 100., Box1Label);
 }
 
 int main(){
