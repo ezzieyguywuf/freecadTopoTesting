@@ -22,7 +22,9 @@
 #include <TNaming.hxx>
 
 #include <Geom_Plane.hxx>
+#include <Geom_CylindricalSurface.hxx>
 #include <Geom_Line.hxx>
+#include <Geom_Circle.hxx>
 #include <Geom_TrimmedCurve.hxx>
 
 #include <GC_MakeSegment.hxx>
@@ -46,6 +48,7 @@
 #include <BRep_Tool.hxx>
 #include <BRepTools.hxx>
 #include <BRepPrimAPI_MakeBox.hxx>
+#include <BRepPrimAPI_MakeCylinder.hxx>
 #include <BRepPrimAPI_MakePrism.hxx>
 #include <BRepFilletAPI_MakeFillet.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
@@ -54,6 +57,7 @@
 
 #include <BRepAlgo.hxx>
 #include <BRepAlgo_Cut.hxx>
+#include <BRepAlgo_Fuse.hxx>
 #include <BRepAlgoAPI_Cut.hxx>
 
 #include <gp_Pnt.hxx>
@@ -72,10 +76,13 @@ void printDumpFile(TopoDS_Shape shape);
 void writeDumpFiles(TopoDS_Shape orig, TopoDS_Shape cut, TopoDS_Shape newBox);
 void AddTextToLabel(TDF_Label& Label, char* str);
 void AddTextToLabel(TDF_Label& Label, std::string Text);
-TopoDS_Shape  MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
-                             const Standard_Real dz, const TDF_Label LabelRootPtr);
+TopoDS_Shape MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
+                            const Standard_Real dz, const TDF_Label LabelRoot);
+TopoDS_Shape MakeTrackedCyl(const Standard_Real rad, const Standard_Real height,
+                            const TDF_Label LabelRoot);
 TopoDS_Shape MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot);
 void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& LabelRoot);
+TopoDS_Shape MakeTrackedFuse(TopoDS_Shape BaseShape, TopoDS_Shape AddShape, TDF_Label& LabelRoot);
 void MakeTrackedSelection(TopoDS_Shape BaseShape, TopoDS_Shape SelectedShape, TDF_Label& LabelRoot);
 void MakeTrackedSelection(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Selections, TDF_Label& LabelRoot);
 void MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges, TDF_Label& FilletLabelRoot);
@@ -112,7 +119,7 @@ void printShapeInfo(TopoDS_Shape shape, TopAbs_ShapeEnum which){
         for (int i = 1; i <= mapOfShapes.Extent(); i++){
             TopoDS_Face aFace = TopoDS::Face(mapOfShapes.FindKey(i));
             Handle(Geom_Surface) aSurface = BRep_Tool::Surface(aFace);
-            if (aSurface->DynamicType() == STANDARD_TYPE(Geom_Plane)){
+            if(aSurface->IsKind(STANDARD_TYPE(Geom_Plane))){
                 Handle(Geom_Plane) aPlane = Handle(Geom_Plane)::DownCast(aSurface);
                 gp_Pnt aPoint = aPlane->Location();
                 gp_Ax1 anAxis = aPlane->Axis();
@@ -124,9 +131,32 @@ void printShapeInfo(TopoDS_Shape shape, TopAbs_ShapeEnum which){
                 dirx = aDir.X();
                 diry = aDir.Y();
                 dirz = aDir.Z();
-                std::cout << "For i= " << i << " ";
+                std::cout << "For i= " << i << ", ";
+                std::cout << "type = Geom_Plane, ";
                 std::cout << "loc = (" << locx << ", " << locy << ", " << locz << ") , ";
                 std::cout << "dir = (" << dirx << ", " << diry << ", " << dirz << ") " << std::endl;
+            }
+            else if(aSurface->IsKind(STANDARD_TYPE(Geom_CylindricalSurface))){
+                std::cout << "It is a cylindrical surface" << std::endl;
+                Handle(Geom_CylindricalSurface) aCylSurface = Handle(Geom_CylindricalSurface)::DownCast(aSurface);
+                gp_Pnt aPoint = aCylSurface->Location();
+                gp_Ax1 anAxis = aCylSurface->Axis();
+                gp_Dir aDir   = anAxis.Direction();
+                Standard_Real locx, locy, locz, dirx, diry, dirz;
+                locx = aPoint.X();
+                locy = aPoint.Y();
+                locz = aPoint.Z();
+                dirx = aDir.X();
+                diry = aDir.Y();
+                dirz = aDir.Z();
+                std::cout << "For i= " << i << " ";
+                std::cout << "type = Geom_CylindricalSurface, ";
+                std::cout << "loc = (" << locx << ", " << locy << ", " << locz << ") , ";
+                std::cout << "dir = (" << dirx << ", " << diry << ", " << dirz << ") " << std::endl;
+            }
+            else{
+                std::cout << "Surface not a Plane at i = " << i;
+                std::cout << " The DynamicType is = " << aSurface->DynamicType() << std::endl;
             }
         }
     }
@@ -143,11 +173,35 @@ void printShapeInfo(TopoDS_Shape shape, TopAbs_ShapeEnum which){
                 gp_Ax1 anAxis = aLine->Position();
                 gp_Dir aDir   = anAxis.Direction();
                 std::cout << "For i= " << i << " ";
+                std::cout << "type = Geom_Edge, ";
                 std::cout << "point1 = (" << point1.X() << ", " << point1.Y() << ", " << point1.Z() << ") , ";
                 std::cout << "point2 = (" << point2.X() << ", " << point2.Y() << ", " << point2.Z() << ") , ";
                 std::cout << "dir = (" << aDir.X() << ", " << aDir.Y() << ", " << aDir.Z() << ") " << std::endl;
             }
+            else if (aCurve->DynamicType() == STANDARD_TYPE(Geom_Circle)){
+                Handle(Geom_Circle) aCircle = Handle(Geom_Circle)::DownCast(aCurve);
+                Standard_Real radius, locx, locy, locz;
+                radius = aCircle->Radius();
+                gp_Ax1 anAxis = aCircle->Axis();
+                gp_Dir aDir   = anAxis.Direction();
+                gp_Pnt aPoint = aCircle->Location();
+                locx = aPoint.X();
+                locy = aPoint.Y();
+                locz = aPoint.Z();
+                std::cout << "For i= " << i << " ";
+                std::cout << "type = Geom_Circle, ";
+                std::cout << "radius = " << radius << " ";
+                std::cout << "loc = (" << locx << ", " << locy << ", " << locz << ") , ";
+                std::cout << "dir = (" << aDir.X() << ", " << aDir.Y() << ", " << aDir.Z() << ") " << std::endl;
+            }
+            else{
+                std::cout << "Curve not a Line or Circle at i = " << i;
+                std::cout << " The DynamicType is = " << aCurve->DynamicType() << std::endl;
+            }
         }
+    }
+    else{
+        std::cout << "Don't recognize that TopAbs, sorry" << std::endl;
     }
 }
 
@@ -259,6 +313,85 @@ TopoDS_Shape MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
     return GendBox;
 }
 
+TopoDS_Shape MakeTrackedCyl(const Standard_Real rad, const Standard_Real height,
+                            const TDF_Label LabelRoot){
+    BRepPrimAPI_MakeCylinder MakeCylinder(rad, height);
+    TopoDS_Shape GendCyl = MakeCylinder.Shape();
+
+    //create the labels we'll need
+    TDF_Label SeamEdge     = TDF_TagSource::NewChild(LabelRoot);
+    TDF_Label Top          = TDF_TagSource::NewChild(LabelRoot);
+    TDF_Label Bottom       = TDF_TagSource::NewChild(LabelRoot);
+    TDF_Label Side         = TDF_TagSource::NewChild(LabelRoot);
+
+    // add the generated cylinder to the LabelRoot
+    TNaming_Builder GeneratedCylBuilder(LabelRoot);
+    GeneratedCylBuilder.Generated(GendCyl);
+
+    TopoDS_Shape BotFace, TopFace;
+    TopTools_IndexedMapOfShape mapOfFaces;
+    TopExp::MapShapes(GendCyl, TopAbs_FACE, mapOfFaces);
+    int i=1;
+    int maxZ = -1;
+    for (; i<=mapOfFaces.Extent(); i++){
+        TopoDS_Face aFace = TopoDS::Face(mapOfFaces.FindKey(i));
+        Handle(Geom_Surface) aSurface = BRep_Tool::Surface(aFace);
+
+        if(aSurface->IsKind(STANDARD_TYPE(Geom_Plane))){
+            Handle(Geom_Plane) aPlane = Handle(Geom_Plane)::DownCast(aSurface);
+            gp_Pnt location = aPlane->Location();
+            if (location.Z() > maxZ){
+                if (!TopFace.IsNull()){
+                    BotFace = TopFace;
+                }
+                TopFace = aFace;
+                maxZ = location.Z();
+            }
+            else{
+                if(!BotFace.IsNull()){
+                    TopFace = BotFace;
+                }
+                BotFace = aFace;
+            }
+        }
+        else if(aSurface->IsKind(STANDARD_TYPE(Geom_CylindricalSurface))){
+            TNaming_Builder SideBuilder(Side);
+            SideBuilder.Generated(aFace);
+            Handle(Geom_CylindricalSurface) aCylSurface = Handle(Geom_CylindricalSurface)::DownCast(aSurface);
+            gp_Pnt aPoint = aCylSurface->Location();
+            gp_Ax1 anAxis = aCylSurface->Axis();
+            gp_Dir aDir   = anAxis.Direction();
+            Standard_Real locx, locy, locz, dirx, diry, dirz;
+            locx = aPoint.X();
+            locy = aPoint.Y();
+            locz = aPoint.Z();
+        }
+    }
+
+    TNaming_Builder Top1FaceIns (Top);
+    Top1FaceIns.Generated (TopFace);  
+
+    TNaming_Builder Bottom1FaceIns (Bottom);
+    Bottom1FaceIns.Generated (BotFace);
+
+    TopTools_IndexedMapOfShape mapOfEdges;
+    TopExp::MapShapes(GendCyl, TopAbs_EDGE, mapOfEdges);
+    i=1;
+    for (; i<=mapOfFaces.Extent(); i++){
+        TopoDS_Edge anEdge = TopoDS::Edge(mapOfEdges.FindKey(i));
+        Standard_Real lineStart, lineEnd;
+        Handle(Geom_Curve) aCurve = BRep_Tool::Curve(anEdge, lineStart, lineEnd);
+
+        if (aCurve->DynamicType() == STANDARD_TYPE(Geom_Line)){
+            std::cout << "Added seam edge" << std::endl;
+            TNaming_Builder SeamBuilder(SeamEdge);
+            SeamBuilder.Generated(anEdge);
+        }
+    }
+
+    return MakeCylinder.Shape();
+}
+
 TopoDS_Shape MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot){
     TopLoc_Location location(Transformation);
     TDF_LabelMap scope;
@@ -355,6 +488,62 @@ void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& La
         } // if (!modified.IsEmpty()...
     } //for (; ShapeExplorer.More()...
 }
+
+TopoDS_Shape MakeTrackedFuse(TopoDS_Shape BaseShape, TopoDS_Shape AddShape, TDF_Label& LabelRoot){
+    TDF_Label Tool              = TDF_TagSource::NewChild(LabelRoot);
+    TDF_Label ModifiedBase      = TDF_TagSource::NewChild(LabelRoot); 
+    TDF_Label ModifiedAdd       = TDF_TagSource::NewChild(LabelRoot); 
+
+     //Select the 'add shape', for some reason
+    TNaming_Selector ToolSelector2(Tool);
+    ToolSelector2.Select(AddShape, AddShape);
+
+    BRepAlgo_Fuse MyFuser(BaseShape, AddShape);
+    TopoDS_Shape ResultShape = MyFuser.Shape();
+
+    // push FUSED results in DF as modification of Box1
+    TNaming_Builder resultBuilder (LabelRoot);
+    resultBuilder.Modify (BaseShape, ResultShape);
+
+    //push in the DF modified faces on Base Shape
+
+    TNaming_Builder ModBaseBuilder(ModifiedBase);
+    TopTools_IndexedMapOfShape mapOfShapes;
+    TopExp::MapShapes(BaseShape, TopAbs_FACE, mapOfShapes);
+    int i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        const TopoDS_Shape& Root = mapOfShapes.FindKey(i);
+        const TopTools_ListOfShape& Shapes = MyFuser.Modified (Root);
+        TopTools_ListIteratorOfListOfShape ShapesIterator (Shapes);
+        for (;ShapesIterator.More (); ShapesIterator.Next ()) {
+            const TopoDS_Shape& newShape = ShapesIterator.Value ();
+            // TNaming_Evolution == MODIFY
+            if (!Root.IsSame (newShape))
+                ModBaseBuilder.Modify (Root,newShape );
+        }
+    }
+
+    //push in the DF modified faces on Add Shape
+
+    TNaming_Builder ModAddBuilder(ModifiedAdd);
+    TopExp::MapShapes(AddShape, TopAbs_FACE, mapOfShapes);
+    i=1;
+    for (; i<=mapOfShapes.Extent(); i++){
+        const TopoDS_Shape& Root = mapOfShapes.FindKey(i);
+        const TopTools_ListOfShape& Shapes = MyFuser.Modified (Root);
+        TopTools_ListIteratorOfListOfShape ShapesIterator (Shapes);
+        for (;ShapesIterator.More (); ShapesIterator.Next ()) {
+            const TopoDS_Shape& newShape = ShapesIterator.Value ();
+            // TNaming_Evolution == MODIFY
+            if (!Root.IsSame (newShape))
+                ModAddBuilder.Modify (Root,newShape );
+        }
+    }
+
+    return ResultShape;
+}
+
+
 void MakeTrackedSelection(TopoDS_Shape BaseShape, TopoDS_Shape SelectedShape, TDF_Label& LabelRoot){
     const TDF_Label& SelEdge  = TDF_TagSource::NewChild(LabelRoot);
     TNaming_Selector Selector(SelEdge);
@@ -520,11 +709,34 @@ void runCase5(){
     TDF_Tool::DeepDump(std::cout, DF);
 }
 
+void runFilletBug(){
+    std::cout << "Running case FilletBug" << std::endl;
+    
+    // Create the Data Framework and Root node
+    Handle(TDF_Data) DF                = new TDF_Data();
+    const TDF_Label MyRoot             = DF->Root();
+    TDF_Label Box1Label                = TDF_TagSource::NewChild(MyRoot); // 1
+    TDF_Label CylinderLabel            = TDF_TagSource::NewChild(MyRoot); // 2
+    TDF_Label FusedSolidLabel          = TDF_TagSource::NewChild(MyRoot); // 3
+    TDF_Label SelEdgesLabel            = TDF_TagSource::NewChild(MyRoot); // 4
+    TDF_Label FilletedBox1Label        = TDF_TagSource::NewChild(MyRoot); // 5
+    TDF_Label Box1CutLabel             = TDF_TagSource::NewChild(MyRoot); // 6
+
+    // Create Box and Cylinder
+    TopoDS_Shape Box1 = MakeTrackedBox(100., 100., 100., Box1Label);
+    TopoDS_Shape Cyl1 = MakeTrackedCyl(25., 100., CylinderLabel);
+
+    // Fuse two shapes
+    TopoDS_Shape FusedShape = MakeTrackedFuse(Box1, Cyl1, FusedSolidLabel);
+    TDF_Tool::DeepDump(std::cout, DF);
+}
+
 int main(){
     //runCase1();
     //runCase2();
     //runCase3();
     //runCase4();
-    runCase5();
+    //runCase5();
+    runFilletBug();
     return 0;
 }
