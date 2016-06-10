@@ -54,6 +54,8 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepBuilderAPI_GTransform.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
 
 #include <BRepAlgo.hxx>
 #include <BRepAlgo_Cut.hxx>
@@ -67,7 +69,10 @@
 #include <gp_Dir.hxx>
 #include <gp_Ax2.hxx>
 #include <gp_Trsf.hxx>
+#include <gp_GTrsf.hxx>
 
+void printPoint(gp_Pnt point);
+void writeBrepFile(TopoDS_Shape Shape, std::string name);
 void printShapeInfos(TopoDS_Shape shape1, TopoDS_Shape shape2, TopoDS_Shape shape3);
 void writeShapeInfos(TopoDS_Shape shape1, TopoDS_Shape shape2, TopoDS_Shape shape3);
 void printShapeInfo(TopoDS_Shape shape, TopAbs_ShapeEnum which=TopAbs_FACE);
@@ -80,15 +85,21 @@ TopoDS_Shape MakeTrackedBox(const Standard_Real dx, const Standard_Real dy,
                             const Standard_Real dz, const TDF_Label LabelRoot);
 TopoDS_Shape MakeTrackedCyl(const Standard_Real rad, const Standard_Real height,
                             const TDF_Label LabelRoot);
+void ModTrackedCyl(TopoDS_Shape origCyl, TopoDS_Shape newCyl, const TDF_Label LabelRoot);
 TopoDS_Shape MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot);
 void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& LabelRoot);
 TopoDS_Shape MakeTrackedFuse(TopoDS_Shape BaseShape, TopoDS_Shape AddShape, TDF_Label& LabelRoot);
 void MakeTrackedSelection(TopoDS_Shape BaseShape, TopoDS_Shape SelectedShape, TDF_Label& LabelRoot);
 void MakeTrackedSelection(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Selections, TDF_Label& LabelRoot);
-void MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges, TDF_Label& FilletLabelRoot);
+//void MakeTrackedFillet(TopoDS_Shape BaseShape, TopoDS_Edge Edge, TDF_Label& FilletLabelRoot);
+TopoDS_Shape MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges,
+        TDF_Label& FilletLabelRoot, const Standard_Real rad1, const Standard_Real rad2);
 
 #include "ArchivedRunCases.cpp"
 
+void printPoint(gp_Pnt point){
+    std::cout << "(" << point.X() << ", " << point.Y() << ", " << point.Z() << ")" << std::endl;
+}
 void printShapeInfos(TopoDS_Shape shape1, TopoDS_Shape shape2, TopoDS_Shape shape3){
     std::cout << "orig box" << std::endl;
     printShapeInfo(shape1);
@@ -110,6 +121,9 @@ void writeShapeInfos(TopoDS_Shape shape1, TopoDS_Shape shape2, TopoDS_Shape shap
     myOutFile << "new box" << std::endl;
     writeShapeInfo(shape3, myOutFile);
     myOutFile.close();
+}
+void writeBrepFile(TopoDS_Shape Shape, std::string name){
+    BRepTools::Write(Shape, name.c_str());
 }
 
 void printShapeInfo(TopoDS_Shape shape, TopAbs_ShapeEnum which){
@@ -377,7 +391,7 @@ TopoDS_Shape MakeTrackedCyl(const Standard_Real rad, const Standard_Real height,
     TopTools_IndexedMapOfShape mapOfEdges;
     TopExp::MapShapes(GendCyl, TopAbs_EDGE, mapOfEdges);
     i=1;
-    for (; i<=mapOfFaces.Extent(); i++){
+    for (; i<=mapOfEdges.Extent(); i++){
         TopoDS_Edge anEdge = TopoDS::Edge(mapOfEdges.FindKey(i));
         Standard_Real lineStart, lineEnd;
         Handle(Geom_Curve) aCurve = BRep_Tool::Curve(anEdge, lineStart, lineEnd);
@@ -390,6 +404,11 @@ TopoDS_Shape MakeTrackedCyl(const Standard_Real rad, const Standard_Real height,
     }
 
     return MakeCylinder.Shape();
+}
+
+void ModTrackedCyl(TopoDS_Shape origCyl, TopoDS_Shape newCyl, const TDF_Label LabelRoot){
+    TNaming_Builder ModBuilder(LabelRoot);
+    ModBuilder.Generated(origCyl, newCyl);
 }
 
 TopoDS_Shape MakeTrackedTransform(TopoDS_Shape Shape, gp_Trsf Transformation, TDF_Label& LabelRoot){
@@ -490,6 +509,8 @@ void MakeTrackedCut(TopoDS_Shape BaseShape, TopoDS_Shape CutShape, TDF_Label& La
 }
 
 TopoDS_Shape MakeTrackedFuse(TopoDS_Shape BaseShape, TopoDS_Shape AddShape, TDF_Label& LabelRoot){
+    // I guess we only need to add two nodes, the modified faces from each of the shapes
+    // in the Fuse. I added the Tool too for good measure, but it's probably not needed...
     TDF_Label Tool              = TDF_TagSource::NewChild(LabelRoot);
     TDF_Label ModifiedBase      = TDF_TagSource::NewChild(LabelRoot); 
     TDF_Label ModifiedAdd       = TDF_TagSource::NewChild(LabelRoot); 
@@ -560,24 +581,27 @@ void MakeTrackedSelection(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Sel
         Selector.Select(Shape, BaseShape);
     }
 }
+//void MakeTrackedFillet(TopoDS_Shape BaseShape, TopoDS_Edge Edge, TDF_Label& FilletLabelRoot){
+    //// Perform the Fillet operation
+    //BRepFilletAPI_MakeFillet MakeFillet(BaseShape);// fillet's algo
+    //MakeFillet.Add(5., 5., Edge);
+//}
 
-void MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges, TDF_Label& FilletLabelRoot){
-    //// First, SELECT each edge that we'll fillet, for future reference
-    //MakeTrackedSelection(BaseShape, Edges, FilletLabelRoot);
-
-    // Now, Perform the Fillet operation
+TopoDS_Shape MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges,
+        TDF_Label& FilletLabelRoot, const Standard_Real rad1, const Standard_Real rad2){
+    // Perform the Fillet operation
     BRepFilletAPI_MakeFillet MakeFillet(BaseShape);// fillet's algo
 
     Standard_Integer i=1;
     for(; i<= Edges.Extent(); i++){
         const TopoDS_Edge& E = TopoDS::Edge(Edges(i));
-        MakeFillet.Add(5., 5., E);
+        MakeFillet.Add(rad1, rad2, E);
     }
     MakeFillet.Build();
 
     if(!MakeFillet.IsDone()){
         std::cout << "fillet failed, bailing out" << std::endl;
-        return; //Algorithm failed
+        return TopoDS_Shape(); //Algorithm failed
     }
 
     TopoDS_Shape ResultShape = MakeFillet.Shape();
@@ -610,7 +634,7 @@ void MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges
             if (!CurrentEdge.IsSame (newShape)){
                 FaceFromEdgeBuilder.Generated (CurrentEdge, newShape );
                 std::cout << "Found a generated Shape, i = " << i << std::endl;
-                printShapeInfo(CurrentEdge);
+                //printShapeInfo(CurrentEdge);
             }
         }
     }
@@ -630,7 +654,7 @@ void MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges
             if (!CurrentFace.IsSame (newShape))
                 ModFacesBuilder.Modify (CurrentFace,newShape );
                 std::cout << "Found Modified Shape, i= " << i << std::endl;
-                printShapeInfo(CurrentFace);
+                //printShapeInfo(CurrentFace);
         }
     }
 
@@ -644,7 +668,7 @@ void MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges
         if (MakeFillet.IsDeleted (CurrentFace)){
             DelFacesBuilder.Delete(CurrentFace);
             std::cout << "Found Deleted Shape, i= " << i << std::endl;
-            printShapeInfo(CurrentFace);
+            //printShapeInfo(CurrentFace);
         }
     }
 
@@ -666,6 +690,7 @@ void MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfShape Edges
             }
         }
     }
+    return ResultShape;
 }
 
 void runCase5(){
@@ -701,7 +726,7 @@ void runCase5(){
     MakeTrackedSelection(Box1, mapOfEdges, SelEdgesLabel);
 
     // Make the fillet operation
-    MakeTrackedFillets(Box1, mapOfEdges, FilletedBox1Label);
+    MakeTrackedFillets(Box1, mapOfEdges, FilletedBox1Label, 20., 20.);
 
     // make the cut operation.
     MakeTrackedCut(Box1, Box2, Box1CutLabel);
@@ -719,8 +744,9 @@ void runFilletBug(){
     TDF_Label CylinderLabel            = TDF_TagSource::NewChild(MyRoot); // 2
     TDF_Label FusedSolidLabel          = TDF_TagSource::NewChild(MyRoot); // 3
     TDF_Label SelEdgesLabel            = TDF_TagSource::NewChild(MyRoot); // 4
-    TDF_Label FilletedBox1Label        = TDF_TagSource::NewChild(MyRoot); // 5
-    TDF_Label Box1CutLabel             = TDF_TagSource::NewChild(MyRoot); // 6
+    TDF_Label FilletedBoxLabel         = TDF_TagSource::NewChild(MyRoot); // 5
+    TDF_Label Cylinder2Label           = TDF_TagSource::NewChild(MyRoot); // 6
+    TDF_Label CylinderGrowLabel        = TDF_TagSource::NewChild(MyRoot); // 6
 
     // Create Box and Cylinder
     TopoDS_Shape Box1 = MakeTrackedBox(100., 100., 100., Box1Label);
@@ -728,7 +754,99 @@ void runFilletBug(){
 
     // Fuse two shapes
     TopoDS_Shape FusedShape = MakeTrackedFuse(Box1, Cyl1, FusedSolidLabel);
-    TDF_Tool::DeepDump(std::cout, DF);
+    //printShapeInfo(FusedShape, TopAbs_EDGE);
+
+    // Select a single edge on the FusedShape. I'll try to grab the same one as in the Bug
+    TopTools_IndexedMapOfShape mapOfEdges;
+    TopExp::MapShapes(FusedShape, TopAbs_EDGE, mapOfEdges);
+    gp_Pnt target1, target2;
+    target1 = gp_Pnt(100., 0., 100.);
+    target2 = gp_Pnt(100., 100., 100.);
+
+    int i=1;
+    for (; i <= mapOfEdges.Extent(); i++){
+        Standard_Real lineStart, lineEnd;
+        TopoDS_Edge anEdge = TopoDS::Edge(mapOfEdges.FindKey(i));
+        Handle(Geom_Curve) aCurve = BRep_Tool::Curve(anEdge, lineStart, lineEnd);
+        //printShapeInfo(anEdge, TopAbs_EDGE);
+        gp_Pnt point1, point2;
+        aCurve->D0(lineStart, point1);
+        aCurve->D0(lineEnd, point2);
+        if (point1.IsEqual(target1, 0.01) && point2.IsEqual(target2, 0.01)){
+            std::cout << "Added edge to fillet" << std::endl;
+            MakeTrackedSelection(FusedShape, anEdge, SelEdgesLabel);
+        }
+    }
+
+    // Fillet that edge
+    TDF_Label FilletSubLabel = SelEdgesLabel.FindChild(1);
+    Handle(TNaming_NamedShape) FilletEdgeNS;
+    FilletSubLabel.FindAttribute(TNaming_NamedShape::GetID(), FilletEdgeNS);
+    TopoDS_Shape aRecoveredEdge = TopoDS::Edge(FilletEdgeNS->Get());
+    mapOfEdges.Clear();
+    mapOfEdges.Add(aRecoveredEdge);
+    TopoDS_Shape FilletedShape = MakeTrackedFillets(FusedShape, mapOfEdges,
+            FilletedBoxLabel, 20., 20.);
+
+    writeBrepFile(FilletedShape, "FilletedShape.brep");
+    // Great, we've recreated the use-case where the bug is seen Let's increase the height
+    // of the Cylinder and rebuild our Fused Solid
+
+    //// First, get the cylinder
+    Handle(TNaming_NamedShape) recoveredCylinderNS;
+    CylinderLabel.FindAttribute(TNaming_NamedShape::GetID(), recoveredCylinderNS);
+    TopoDS_Shape recoveredCylinder = recoveredCylinderNS->Get();
+
+    // Let's try changing the underlying geometry on the recoveredCylinder and see what
+    // happens
+    std::cout << "orig recovered cylinder" << std::endl;
+    printShapeInfo(recoveredCylinder);
+
+    gp_Trsf myTrsf;
+    // each (x,y,z) is converted to (x', y', z') per the following
+    //            x'= a11x + a12y + a13z + a14
+    //            y'= a21x + a22y + a23z + a24
+    //            z'= a31x + a32y + a33z + a34
+    myTrsf.SetValues( 1, 0, 0, 0,
+                      0, 1, 0, 0,
+                      0, 0, 2.5, 0);
+    //gp_GTrsf myGTrsf(myTrsf);
+    gp_GTrsf myGTrsf;
+    gp_Dir myDir = gp_Dir(0, 0, 1);
+    gp_Pnt myPnt = gp_Pnt(0, 0, 0);
+    gp_Ax2 trsfAx2 = gp_Ax2(myPnt, myDir);
+    myGTrsf.SetAffinity(trsfAx2, 1.25);
+    BRepBuilderAPI_GTransform ScaleCyl(recoveredCylinder, myGTrsf);
+    TopoDS_Shape newCyl = ScaleCyl.Shape();
+    //writeBrepFile(ScaleCyl.Shape(), "ScaledCylinder.brep");
+
+    // Let's check our solid.
+    Handle(TNaming_NamedShape) recSolidNS;
+    FusedSolidLabel.FindAttribute(TNaming_NamedShape::GetID(), recSolidNS);
+    TopoDS_Shape recSolid = recSolidNS->Get();
+    writeBrepFile(recSolid, "recFilletedShape.brep"); // still the same
+
+    // I guess we have to rebuild it?
+    BRepAlgo_Fuse MyFuser(Box1, newCyl);
+    TopoDS_Shape NewFused = MyFuser.Shape();
+
+    writeBrepFile(Box1, "Box1Fuse.brep");
+    writeBrepFile(newCyl, "newCylFuse.brep");
+    writeBrepFile(NewFused, "NewFused.brep");
+
+    // we need our edge
+    Handle(TNaming_NamedShape) FilletEdgeNS2;
+    // FilletSubLabel defined earlier, hasn't changed
+    FilletSubLabel.FindAttribute(TNaming_NamedShape::GetID(), FilletEdgeNS2);
+    TopoDS_Edge aRecoveredEdge2 = TopoDS::Edge(FilletEdgeNS2->Get());
+
+    BRepFilletAPI_MakeFillet MakeFillet(NewFused);// fillet's algo
+    MakeFillet.Add(3., 3., aRecoveredEdge2);
+    MakeFillet.Build();
+    TopoDS_Shape ResultShape = MakeFillet.Shape();
+    writeBrepFile(ResultShape, "RebuiltFilletedShape.brep");
+
+    //TDF_Tool::DeepDump(std::cout, DF);
 }
 
 int main(){
