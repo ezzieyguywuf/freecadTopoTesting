@@ -792,15 +792,10 @@ void runFilletBug(){
     // Great, we've recreated the use-case where the bug is seen Let's increase the height
     // of the Cylinder and rebuild our Fused Solid
 
-    //// First, get the cylinder
+    // First, get the cylinder
     Handle(TNaming_NamedShape) recoveredCylinderNS;
     CylinderLabel.FindAttribute(TNaming_NamedShape::GetID(), recoveredCylinderNS);
     TopoDS_Shape recoveredCylinder = recoveredCylinderNS->Get();
-
-    // Let's try changing the underlying geometry on the recoveredCylinder and see what
-    // happens
-    std::cout << "orig recovered cylinder" << std::endl;
-    printShapeInfo(recoveredCylinder);
 
     gp_Trsf myTrsf;
     // each (x,y,z) is converted to (x', y', z') per the following
