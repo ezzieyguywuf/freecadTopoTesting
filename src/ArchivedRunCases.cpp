@@ -163,7 +163,6 @@ void runCase3(){
     // correspondes to myBoxLabel, not cutBox. Seems like a job for a custom class or
     // something. hrm...
     TDF_Label cutBoxLabel      = aLabel.FindChild(2, createIfNotExists);
-    TDF_Label cutboxTopLabel   = cutBoxLabel.FindChild(1, createIfNotExists); // same thing about numbering as above, but for children
     TDF_Label cutBoxTopLabel   = cutBoxLabel.FindChild(1, createIfNotExists); // All these are under the first Label
     TDF_Label cutBoxBotLabel   = cutBoxLabel.FindChild(2, createIfNotExists);
     TDF_Label cutBoxRightLabel = cutBoxLabel.FindChild(3, createIfNotExists);
@@ -355,7 +354,7 @@ void runCase3(){
                     const TopoDS_Shape& possiblyModifiedFace = modifiedFacesIterator.Value();
                     if (!currentFace.IsSame(possiblyModifiedFace))
                         std::cout << "Added a face to Modified" << std::endl;
-                        modifiedFacesBuilder.Modify(currentFace, possiblyModifiedFace);
+                    modifiedFacesBuilder.Modify(currentFace, possiblyModifiedFace);
                 }
             }
 
@@ -1074,4 +1073,163 @@ void runCase4(){
     //aLabel.Dump(std::cout);
     //TDF_Tool::ExtendedDeepDump(std::cout, DF, myFilter);
     TDF_Tool::DeepDump(std::cout, DF);
+}
+
+Handle(TDF_Data) runCase5(){
+    std::cout << "Running case 5" << std::endl;
+    
+    // Create the Data Framework and Root node
+    Handle(TDF_Data) DF          = new TDF_Data();
+    const TDF_Label MyRoot       = DF->Root();
+    TDF_Label Box1Label          = TDF_TagSource::NewChild(MyRoot); // 1
+    TDF_Label Box2Label          = TDF_TagSource::NewChild(MyRoot); // 2
+    TDF_Label SelEdgesLabel      = TDF_TagSource::NewChild(MyRoot); // 3
+    TDF_Label FilletedBox1Label  = TDF_TagSource::NewChild(MyRoot); // 4
+    TDF_Label Box1CutLabel       = TDF_TagSource::NewChild(MyRoot); // 5
+
+    // Create both boxes
+    TopoDS_Shape Box1 = MakeTrackedBox(100., 100., 100., Box1Label);
+    TopoDS_Shape Box2 = MakeTrackedBox(150., 150., 150., Box2Label);
+
+    // Move the second box
+    gp_Vec vec1(gp_Pnt(0.,0.,0.),gp_Pnt(50.,50.,20.));
+    gp_Trsf Transformation;
+    Transformation.SetTranslation(vec1);
+    Box2 = MakeTrackedTransform(Box2, Transformation, Box2Label);
+
+    // Select the edges we're going to fillet
+
+    // Is there a better way to keep track of which child is which Face?
+    Handle(TNaming_NamedShape) Box1TopFaceNS;
+    Box1Label.FindChild(1).FindAttribute(TNaming_NamedShape::GetID(), Box1TopFaceNS);
+    const TopoDS_Shape& top1face  = TNaming_Tool::GetShape(Box1TopFaceNS);
+    TopTools_IndexedMapOfShape mapOfEdges;
+    TopExp::MapShapes(top1face, TopAbs_EDGE, mapOfEdges);
+    MakeTrackedSelection(Box1, mapOfEdges, SelEdgesLabel);
+
+    // Make the fillet operation
+    MakeTrackedFillets(Box1, mapOfEdges, FilletedBox1Label, 20., 20.);
+
+    // make the cut operation.
+    MakeTrackedCut(Box1, Box2, Box1CutLabel);
+
+    //TDF_Tool::DeepDump(std::cout, DF);
+    return DF;
+}
+
+void runFilletBug(){
+    std::cout << "Running case FilletBug" << std::endl;
+    
+    // Create the Data Framework and Root node
+    Handle(TDF_Data) DF                = new TDF_Data();
+    const TDF_Label MyRoot             = DF->Root();
+    TDF_Label Box1Label                = TDF_TagSource::NewChild(MyRoot); // 1
+    TDF_Label CylinderLabel            = TDF_TagSource::NewChild(MyRoot); // 2
+    TDF_Label FusedSolidLabel          = TDF_TagSource::NewChild(MyRoot); // 3
+    TDF_Label SelEdgesLabel            = TDF_TagSource::NewChild(MyRoot); // 4
+    TDF_Label FilletedBoxLabel         = TDF_TagSource::NewChild(MyRoot); // 5
+    //TDF_Label Cylinder2Label           = TDF_TagSource::NewChild(MyRoot); // 6
+    //TDF_Label CylinderGrowLabel        = TDF_TagSource::NewChild(MyRoot); // 6
+
+    // Create Box and Cylinder
+    TopoDS_Shape Box1 = MakeTrackedBox(100., 100., 100., Box1Label);
+    TopoDS_Shape Cyl1 = MakeTrackedCyl(25., 100., CylinderLabel);
+
+    // Fuse two shapes
+    TopoDS_Shape FusedShape = MakeTrackedFuse(Box1, Cyl1, FusedSolidLabel);
+    //printShapeInfo(FusedShape, TopAbs_EDGE);
+
+    // Select a single edge on the FusedShape. I'll try to grab the same one as in the Bug
+    TopTools_IndexedMapOfShape mapOfEdges;
+    TopExp::MapShapes(FusedShape, TopAbs_EDGE, mapOfEdges);
+    gp_Pnt target1, target2;
+    target1 = gp_Pnt(100., 0., 100.);
+    target2 = gp_Pnt(100., 100., 100.);
+
+    int i=1;
+    for (; i <= mapOfEdges.Extent(); i++){
+        Standard_Real lineStart, lineEnd;
+        TopoDS_Edge anEdge = TopoDS::Edge(mapOfEdges.FindKey(i));
+        Handle(Geom_Curve) aCurve = BRep_Tool::Curve(anEdge, lineStart, lineEnd);
+        //printShapeInfo(anEdge, TopAbs_EDGE);
+        gp_Pnt point1, point2;
+        aCurve->D0(lineStart, point1);
+        aCurve->D0(lineEnd, point2);
+        if (point1.IsEqual(target1, 0.01) && point2.IsEqual(target2, 0.01)){
+            std::cout << "Added edge to fillet" << std::endl;
+            MakeTrackedSelection(FusedShape, anEdge, SelEdgesLabel);
+        }
+    }
+
+    // Fillet that edge
+    TDF_Label FilletSubLabel = SelEdgesLabel.FindChild(1);
+    Handle(TNaming_NamedShape) FilletEdgeNS;
+    FilletSubLabel.FindAttribute(TNaming_NamedShape::GetID(), FilletEdgeNS);
+    TopoDS_Shape aRecoveredEdge = TopoDS::Edge(FilletEdgeNS->Get());
+    mapOfEdges.Clear();
+    mapOfEdges.Add(aRecoveredEdge);
+    TopoDS_Shape FilletedShape = MakeTrackedFillets(FusedShape, mapOfEdges,
+            FilletedBoxLabel, 20., 20.);
+
+    writeBrepFile(FilletedShape, "FilletedShape.brep");
+    // Great, we've recreated the use-case where the bug is seen Let's increase the height
+    // of the Cylinder and rebuild our Fused Solid
+
+    // First, get the cylinder
+    Handle(TNaming_NamedShape) recoveredCylinderNS;
+    CylinderLabel.FindAttribute(TNaming_NamedShape::GetID(), recoveredCylinderNS);
+    TopoDS_Shape recoveredCylinder = recoveredCylinderNS->Get();
+
+    gp_Trsf myTrsf;
+    // each (x,y,z) is converted to (x', y', z') per the following
+    //            x'= a11x + a12y + a13z + a14
+    //            y'= a21x + a22y + a23z + a24
+    //            z'= a31x + a32y + a33z + a34
+    myTrsf.SetValues( 1, 0, 0, 0,
+                      0, 1, 0, 0,
+                      0, 0, 2.5, 0);
+    //gp_GTrsf myGTrsf(myTrsf);
+    gp_GTrsf myGTrsf;
+    gp_Dir myDir = gp_Dir(0, 0, 1);
+    gp_Pnt myPnt = gp_Pnt(0, 0, 0);
+    gp_Ax2 trsfAx2 = gp_Ax2(myPnt, myDir);
+    myGTrsf.SetAffinity(trsfAx2, 1.25);
+    BRepBuilderAPI_GTransform ScaleCyl(recoveredCylinder, myGTrsf);
+    TopoDS_Shape newCyl = ScaleCyl.Shape();
+    //writeBrepFile(ScaleCyl.Shape(), "ScaledCylinder.brep");
+
+    // Let's check our solid.
+    Handle(TNaming_NamedShape) recSolidNS;
+    FusedSolidLabel.FindAttribute(TNaming_NamedShape::GetID(), recSolidNS);
+    TopoDS_Shape recSolid = recSolidNS->Get();
+    writeBrepFile(recSolid, "recFilletedShape.brep"); // still the same
+
+    // I guess we have to rebuild it?
+    BRepAlgo_Fuse MyFuser(Box1, newCyl);
+    TopoDS_Shape NewFused = MyFuser.Shape();
+
+    writeBrepFile(Box1, "Box1Fuse.brep");
+    writeBrepFile(newCyl, "newCylFuse.brep");
+    writeBrepFile(NewFused, "NewFused.brep");
+
+    // we need our edge
+    Handle(TNaming_NamedShape) FilletEdgeNS2;
+    // FilletSubLabel defined earlier, hasn't changed
+    FilletSubLabel.FindAttribute(TNaming_NamedShape::GetID(), FilletEdgeNS2);
+    TopoDS_Edge aRecoveredEdge2 = TopoDS::Edge(FilletEdgeNS2->Get());
+
+    BRepFilletAPI_MakeFillet MakeFillet(NewFused);// fillet's algo
+    MakeFillet.Add(3., 3., aRecoveredEdge2);
+    MakeFillet.Build();
+    TopoDS_Shape ResultShape = MakeFillet.Shape();
+    writeBrepFile(ResultShape, "RebuiltFilletedShape.brep");
+
+    // look at the TNaming_Naming thing
+    Handle(TNaming_Naming) myNamingThing;
+    FusedSolidLabel.FindChild(1).FindAttribute(TNaming_Naming::GetID(), myNamingThing);
+    myNamingThing->Dump(std::cout);
+    std::cout << "<- should be Naming " << std::endl;
+    //myNamingThing->Solve()
+
+    //TDF_Tool::DeepDump(std::cout, DF);
 }
