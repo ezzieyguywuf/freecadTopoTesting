@@ -13,6 +13,6 @@ add_executable(occTest ${CMAKE_SOURCE_DIR}/occPyTest.cpp ${CMAKE_SOURCE_DIR}/Top
 set_property( TARGET occTest APPEND_STRING PROPERTY COMPILE_FLAGS -Wall)
 target_link_libraries(occTest TKBRep TKPrim TKernel TKTopAlgo TKMath TKBO TKG3d TKGeomBase TKCAF TKLCAF TKBool TKFillet)
 
-add_executable(fakeTopoShape ${CMAKE_SOURCE_DIR}/FakeTopoShape.cpp ${CMAKE_SOURCE_DIR}/TopoNamingHelper.cpp)
+add_executable(fakeTopoShape ${CMAKE_SOURCE_DIR}/FakeTopoShape.cpp ${CMAKE_SOURCE_DIR}/TopoNamingHelper.cpp ${CMAKE_SOURCE_DIR}/FakeTopoShapeRunCases.cpp)
 set_property( TARGET fakeTopoShape APPEND_STRING PROPERTY COMPILE_FLAGS -Wall)
 target_link_libraries(fakeTopoShape TKBRep TKPrim TKernel TKTopAlgo TKMath TKBO TKG3d TKGeomBase TKCAF TKLCAF TKBool TKFillet)
