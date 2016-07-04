@@ -960,14 +960,14 @@ void runTestNamingHelper(){
 
 
     std::cout << "Done with runTesNamingHelper, dumping my custom deep dump\n" ;
-    MyHelper.DeepDump(std::cout);
+    MyHelper.DeepDump();
 
     TDF_IDFilter myFilter;
     TDF_AttributeIndexedMap myMap;
     myFilter.Keep(TNaming_NamedShape::GetID());
     myFilter.Keep(TDataStd_AsciiString::GetID());
     myFilter.Keep(TNaming_UsedShapes::GetID());
-    TDF_Tool::ExtendedDeepDump(std::cout, MyHelper.GetDF(), myFilter);
+    //TDF_Tool::ExtendedDeepDump(std::cout, MyHelper.GetDF(), myFilter);
 }
 
 void runTestCustomDump(){
@@ -1036,14 +1036,14 @@ int main(){
     //runCase1();
     //runCase2();
     //runCase3();
-    //runCase4();
+    runCase4();
     //runCase5();
     //runLookAtSelectionNodeCase();
     //runFilletBug();
     //runSerializeTest();
     //runTestModified();
     //runTestDeleted();
-    runTestNamingHelper();
+    //runTestNamingHelper();
     //runTestCustomDump();
     return 0;
 }
