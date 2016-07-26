@@ -99,8 +99,9 @@ TopoDS_Shape MakeTrackedFillets(TopoDS_Shape BaseShape, TopTools_IndexedMapOfSha
         TDF_Label& FilletLabelRoot, const Standard_Real rad1, const Standard_Real rad2);
 TopTools_ListOfShape GetModifiedFaces(TopoDS_Shape BaseShape, TopoDS_Shape FusedShape, TDF_Label& LabelRoot);
 
+#define _RunningOutsideFreeCAD_
 #include "ArchivedRunCases.cpp"
-#include "TopoNamingHelper.h"
+#include <TopoNamingHelper.h>
 
 void printPoint(gp_Pnt point){
     std::cout << "(" << point.X() << ", " << point.Y() << ", " << point.Z() << ")" << std::endl;
@@ -1032,11 +1033,14 @@ void runLookAtSelectionNodeCase(){
     }
 }
 
+void runTestMkFillet(){
+}
+
 int main(){
     //runCase1();
     //runCase2();
     //runCase3();
-    runCase4();
+    //runCase4();
     //runCase5();
     //runLookAtSelectionNodeCase();
     //runFilletBug();
@@ -1045,5 +1049,6 @@ int main(){
     //runTestDeleted();
     //runTestNamingHelper();
     //runTestCustomDump();
+    runTestMkFillet();
     return 0;
 }

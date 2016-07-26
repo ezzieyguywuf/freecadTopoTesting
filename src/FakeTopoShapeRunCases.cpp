@@ -1,5 +1,3 @@
-#include "FakeTopoShape.h"
-
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <BRepPrimAPI_MakeCylinder.hxx>
 #include <BRepAlgoAPI_Fuse.hxx>
@@ -15,8 +13,8 @@
 #include <Geom_Line.hxx>
 #include <Precision.hxx>
 
-TopoShape DuplicateCylinderFilletBug();
-TopoShape SimpleBoxWithNaming();
+#include "FakeTopoShape.cpp"
+
 //TopoShape ChangeCylinderHeight(const double height, const TopoShape Shape);
 
 //TopoShape ChangeCylinderHeight(const double height, const TopoShape Shape){
@@ -131,23 +129,24 @@ TopoShape SimpleBoxWithNaming(){
     //std::clog << "|____________________|" << std::endl;
     
     // And fillet the box
+    std::clog << "Running makeTopoShape" << std::endl;
     BoxShape.makeTopoShapeFillet(2., 2., selectionLabel);
 
     //std::clog << "-------------------------" << std::endl;
-    //std::clog << "--- REBUILDING ----------" << std::endl;
+    std::clog << "------------ REBUILDING ----------" << std::endl;
     //std::clog << "-------------------------" << std::endl;
 
-    //std::clog << BoxShape.DumpTopoHistory();
     // make box taller
-    //const TopoDS_Shape& Box2 = BRepPrimAPI_MakeBox(10., 10., 20.);
-    //BoxShape.modifyShape("0:2", Box2);
+    const TopoDS_Shape& Box2 = BRepPrimAPI_MakeBox(10., 20., 20.);
+    BoxShape.modifyShape("0:2", Box2);
+    std::clog << BoxShape.DumpTopoHistory();
 
 
     // try re-building the box
-    //TopoDS_Edge recoveredEdge = TopoDS::Edge(BoxShape.getSelectedEdge(selectionLabel));
+    TopoDS_Edge recoveredEdge = TopoDS::Edge(BoxShape.getSelectedEdge(selectionLabel));
     //TopoDS_Shape recoveredBase = BoxShape.getSelectedBaseShape(selectionLabel);
-    //TopoDS_Shape recoveredBase = BoxShape.getNodeShape("0:2");
-    //TopoDS_Shape recoveredBase = BoxShape.getTipShape();
+    //TopoDS_Shape recoveredBase = BoxShape.getNodeShape("0:4");
+    TopoDS_Shape recoveredBase = BoxShape.getTipShape();
 
     //if (recoveredBase.IsNull()){
         //std::cout << "BaseShape is NULL....\n";
@@ -163,16 +162,61 @@ TopoShape SimpleBoxWithNaming(){
         //std::cout << "recoveredEdge is NOT NULL!!!!" << std::endl;
     //}
 
-    //TopTools_IndexedMapOfShape edges;
-    //TopExp::MapShapes(recoveredBase, TopAbs_EDGE, edges);
-    //if (edges.Contains(recoveredEdge)){
-        //std::cout << "Yes the Edge is in the box...\n";
-    //}
-    //else{
-        //std::cout << "No, the Edge is not in the Box...\n";
-    //}
+    TopTools_IndexedMapOfShape edges;
+    TopExp::MapShapes(recoveredBase, TopAbs_EDGE, edges);
+    if (edges.Contains(recoveredEdge)){
+        std::cout << "Yes the Edge is in the box...\n";
+    }
+    else{
+        std::cout << "No, the Edge is not in the Box...\n";
+    }
 
     //BoxShape.makeTopoShapeFillet(2., 2., selectionLabel);
 
     return BoxShape;
+}
+
+void TestMkFillet(){
+    TopoDS_Shape Box = BRepPrimAPI_MakeBox(10., 10., 10.);
+    BRepFilletAPI_MakeFillet mkFillet(Box);
+
+    TopTools_IndexedMapOfShape edges;
+    TopExp::MapShapes(Box, TopAbs_EDGE, edges);
+    TopoDS_Edge edge = TopoDS::Edge(edges.FindKey(3));
+
+    mkFillet.Add(1., 1., edge);
+    mkFillet.Build();
+
+    TopoDS_Shape result = mkFillet.Shape();
+
+
+    TopTools_IndexedMapOfShape faces;
+    TopExp::MapShapes(Box, TopAbs_FACE, faces);
+    TopoDS_Face face = TopoDS::Face(faces.FindKey(3));
+
+    TopTools_ListOfShape modified = mkFillet.Modified(face);
+    TopTools_ListIteratorOfListOfShape modIt;
+    for (int i=1; modIt.More(); modIt.Next(), i++){
+        TopoDS_Face curFace = TopoDS::Face(modIt.Value());
+        TopoNamingHelper::WriteShape(curFace, "00_02_ModifiedFace", i);
+    }
+
+    TopoNamingHelper::WriteShape(result, "00_00_FilletResult");
+    TopoNamingHelper::WriteShape(face, "00_01_BaseFace_3");
+}
+// Main func
+int main(){
+    try{
+        //TopoShape res = DuplicateCylinderFilletBug();
+        //std::clog << "--------------------------------------------------" << std::endl;
+        //TopoShape res = SimpleBoxWithNaming();
+        //res.DumpTopoHistory();
+        TestMkFillet();
+    }
+    catch(Standard_Failure failure){
+        failure.Print(std::clog);
+        std::clog << std::endl;
+        failure.Reraise();
+    }
+    return 0;
 }

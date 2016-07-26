@@ -1,50 +1,47 @@
-#ifndef __TOPOSHAPE__
-#define __TOPOSHAPE__
-#include <BRepAlgoAPI_Fuse.hxx>
-#include <TopoDS_Edge.hxx>
+#ifndef FAKE_TOPO_SHAPE_H
+#define FAKE_TOPO_SHAPE_H
 #include <TopoDS_Shape.hxx>
-#include <vector>
-#include <string>
+#include <TopoNamingHelper.h>
+#include <TopoNamingData.h>
 
-#include "TopoNamingHelper.h"
+struct FilletElement {
+    FilletElement(){}
+    FilletElement(int id, double rad1, double rad2){
+        edgeid = id;
+        radius1 = rad1;
+        radius2 = rad2;
+    }
+    int edgeid;
+    double radius1, radius2;
+    std::string edgetag;
+};
 
 class TopoShape{
     public:
         TopoShape();
-        TopoShape(const TopoDS_Shape& shape);
-        TopoShape(const TopoShape& shape);
+        TopoShape(const TopoDS_Shape& sh);
+        TopoShape(const TopoShape& sh);
         ~TopoShape();
 
-        void operator = (const TopoShape& shape);
+        void operator = (const TopoShape& sh);
 
-        // Added for Topo Naming stuff
-        void setShape(const TopoDS_Shape& shape, const std::string& name="");
-        TopoDS_Shape getShape() const;
-        void addShape(const TopoShape& shape);
-        void modifyShape(const std::string& NodeTag, const TopoDS_Shape& shape);
+        void createBox(const BoxData& BData);
+        void updateBox(const BoxData& BData);
+        void createFilletBaseShape(const TopoShape& BaseShape);
+        BRepFilletAPI_MakeFillet createFillet(const TopoShape& BaseShape, const std::vector<FilletElement>& FDatas);
+        BRepFilletAPI_MakeFillet updateFillet(const TopoShape& BaseShape, const std::vector<FilletElement>& FDatas);
+
+        void setShape(const TopoDS_Shape& shape);
         void setShape(const TopoShape& shape);
-        void setShape(const TopoShape& Shape, BRepAlgoAPI_Fuse& mkFuse);
-        void setShape(const TopoShape& BaseShape, BRepFilletAPI_MakeFillet& mkFillet);
-        BRepFilletAPI_MakeFillet makeTopoShapeFillet(const double rad1, const double rad2, const std::string which);
-        std::string DumpTopoHistory() const;
-        std::string DeepDumpTopoHistory() const;
-        std::string DeepDeepDumpTopoHistory() const;
-        void OCCDeepDump() const;
-
+        TopoDS_Shape getShape() const;
+        TopoNamingHelper getTopoHelper() const;
         std::string selectEdge(const int edgeID);
-        std::vector<std::string> selectEdges(const std::vector<int> edgeIDs);
-        TopoDS_Edge getSelectedEdge(const std::string NodeTag) const;
-        TopoDS_Shape getSelectedBaseShape(const std::string NodeTag) const;
-        TopoDS_Shape getTipShape();
-        TopoDS_Shape getNodeShape(const std::string NodeTag) const;
 
-        void WriteTNamingNode(const std::string NodeTage, const std::string NameBase, const bool Deep);
-
-        // Other stuff from Real TopoShape
-        TopoDS_Shape fuse(TopoDS_Shape) const;
-        TopoDS_Shape multiFuse(const std::vector<TopoDS_Shape>&, Standard_Real tolerance = 0.0) const;
-    private:
-        TopoDS_Shape _Shape;
+    //private:
         TopoNamingHelper _TopoNamer;
+        TopoDS_Shape _Shape;
+        std::vector<TopoDS_Face> getBoxFacesVector(BRepPrimAPI_MakeBox mkBox) const;
+        TopTools_ListOfShape getBoxFaces(BRepPrimAPI_MakeBox mkBox) const;
+        FilletData getFilletData(const TopoShape& BaseShape, BRepFilletAPI_MakeFillet& mkFillet) const;
 };
-#endif //__TOPOSHAPE__
+#endif /* ifndef FAKE_TOPO_SHAPE_H */
