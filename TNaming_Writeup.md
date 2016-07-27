@@ -259,8 +259,8 @@ So, this example won't run as-is but should provide a basic understanding of how
 4. It is extremely important to the Solve algorithm that the rules outlined
    [here](http://www.opencascade.com/doc/occt-7.0.0/overview/html/occt_user_guides__ocaf.html#occt_ocaf_5_6_1)
    in the OCC guides are adhered to.
-5. TNaming_Builder appears to have a Select method. This method, however, is not ever used
-   in the occ example. Instead, TNaming_Selector::Select is used. Not sure if they are
+5. `TNaming_Builder` appears to have a Select method. This method, however, is not ever used
+   in the occ example. Instead, `TNaming_Selector::Select` is used. Not sure if they are
    interchangeable, though I have a feeling they're not.
 
 # How to use TNaming to resolve Topological Naming
