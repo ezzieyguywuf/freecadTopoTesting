@@ -1,3 +1,4 @@
+<pre>
 /*********************************************************************************
 *   Copyright (C) 2016 Wolfgang E. Sanyer (ezzieyguywuf@gmail.com)               *
 *                                                                                *
@@ -14,6 +15,7 @@
 *   You should have received a copy of the GNU General Public License            *
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.        *
 ******************************************************************************** */
+</pre>
 # What is TNaming?
 
 TNaming is an opencascade (henceforth referred to as occ) 'Package'. It provides a set of
@@ -147,7 +149,7 @@ Here's a typical use-case:
 # How to use TNaming to resolve Topological Naming
 
 Well, in some of the early tests, it appears that simply retaining a reference to a
-particular TDF_Label that oldes a TNaming_NamedShape is sufficient to maintain a constant,
+particular TDF_Label that holds a TNaming_NamedShape is sufficient to maintain a constant,
 non-volatile reference to the TopoDS_Shape that the TNaming_NamedShape is holding. All it
 takes is a simple `myNamedShape->Get()` to grab the TopoDS_Shape.
 
